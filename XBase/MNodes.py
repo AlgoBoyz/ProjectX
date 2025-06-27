@@ -4,7 +4,6 @@ import maya.cmds as mc
 from .MConstant import Sign
 from .MBaseFunctions import get_list_types
 
-
 class MNode(object):
     _CREATE_STR = 'MNodeBase'
 
@@ -64,6 +63,20 @@ class MNode(object):
     @property
     def history(self):
         return mc.listHistory(self.name)
+
+    @property
+    def dp_node(self):
+        import maya.api.OpenMaya as om
+        sel_list: om.MSelectionList = om.MGlobal.getSelectionListByName(self.name)
+        dp_node: om.MObject = sel_list.getDependNode(0)
+        return dp_node
+
+    @property
+    def dag_path(self):
+        import maya.api.OpenMaya as om
+        sel_list: om.MSelectionList = om.MGlobal.getSelectionListByName(self.name)
+        dag_path: om.MDagPath = sel_list.getDagPath(0)
+        return dag_path
 
     def add_attr(self, attr_name: str, **kwargs):
         mc.addAttr(self.name, **kwargs)

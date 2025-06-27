@@ -1,26 +1,90 @@
+from typing import Union, Optional
+
+from libfuturize.fixer_util import is_import_stmt
+
 from XBase import *
-from XBase.MTransform import MTransform as mt
+from XBase import MTransform as mt
+from XBase.MConstant import AttributeTypes, XSpace
 
 
-class Compoent(object):
+class Component(object):
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def build(self):
+        pass
+
+
+class MJointBaseComponent(object):
+    CHAINT_TYPE = mt.MJointChain
+
+    def __init__(self, alias, joint_chain, config):
+        self.alias = alias
+        self.joint_chain = self.CHAINT_TYPE(joint_chain)
+        self.config = config
+
+
+class IKComponentConfig(object):
 
     def __init__(self):
         pass
 
 
-class IKComponent(Compoent):
+class IKComponent(Component):
+
+    def __init__(self, alias, joint_chain: Union['mt.MTripleJointChain', list[str]], config=IKComponentConfig()):
+        super().__init__(joint_chain, config)
+        self.alias = alias
+        if isinstance(joint_chain, mt.MTripleJointChain):
+            self.joint_chain = joint_chain
+        elif isinstance(joint_chain, list):
+            self.joint_chain = joint_chain
+        self._to_clean = []
+        self.clean()
+
+    @classmethod
+    def create(cls, template, config):
+        return cls(template.joints, template.alias, config)
+
+    def build(self):
+        self._create_cache_grp()
+
+    def _create_cache_grp(self):
+        root_grp_name = f'{self.alias}_component_cache'
+        self.build_root_grp = mt.MTransform.create(name=root_grp_name)
+        # XSpace.set_global_root(root_grp_name)
+        jnt = mt.MJoint.create('test')
+        tr = mt.MTransform.create('test_t')
+
+    def clean(self):
+        print(self._to_clean)
+        mt.MTransform.set_root_space('')
+
+
+class FKComponent(Component):
     pass
 
 
-class FKComponent(Compoent):
+class SplineIKComponentConfig(object):
+
+    def __init__(self):
+        self.controller_count = 5
+        self.add_pose_morph_tag = True
+        self.controller_parent_suffixes = ["Grp", "Driven"]
+        self.spline_type = "Cubic"
+        self.fit_mode = "Relevant"
+        self.create_fk_controller = True
+        self.controller_null_shape = None
+        self.add_controller_properties = True
+        self.create_hierarchy = True
+        self.use_spline = ""
+        self.attr_type = AttributeTypes.float3
+
+
+class SplineIKComponent(Component):
     pass
 
 
-class SplineIKComponent(Compoent):
+class IKFKComponent(Component):
     pass
-
-
-class IKFKComponent(Compoent):
-    pass
-
-

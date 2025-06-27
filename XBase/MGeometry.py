@@ -1,8 +1,31 @@
+import logging
+import os.path
+from typing import Optional
+
 import maya.cmds as mc
-from . import MNodes, MTransform
+import maya.api.OpenMaya as om
+from maya.app.renderSetup.model.utils import isExistingType
+from .MNodes import MNode
+from .MConstant import PROJECT_BASE_DIR, Axis
+from .MBaseFunctions import get_child,clamp_list
+from XTools.XFileTool import JsonFile
+from .MTransform import MTransform
 
 
-class MMesh(object):
+# from .MTransform import MTransform
+
+
+class MShape(MNode):
+    def __init__(self, shape_node):
+        super().__init__(shape_node)
+
+    @property
+    def transform_node(self):
+        parent = mc.listRelatives(self.name, parent=True)
+        return MTransform(parent)
+
+
+class MMesh(MShape):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership',
                  'hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
                  'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
@@ -61,11 +84,101 @@ class MMesh(object):
                  'displayInvisibleFaces', 'useMeshSculptCache', 'computeFromSculptCache', 'useMeshTexSculptCache',
                  'freeze', 'motionVectorColorSet', 'vertexColorSource']
 
-    def __init__(self, transform_node, shape_node):
-        self.transform_node = MTransform(transform_node)
+    def __init__(self, shape_node):
+        super().__init__(shape_node)
 
 
-class MCurve(object):
+class CurveData(object):
+    DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'res', 'GeoData', 'NurbsCurve')
+
+    def __init__(self, name):
+        self.name = name
+        self.pos_array = None
+        self.pos_vec_array = None
+        self.knots = None
+        self.periodic = None
+        self.degree = -1
+        self.normal_vec = Axis.X
+        self.data = None
+
+        self.attrs = ['name', 'pos_array', 'knots', 'periodic', 'degree', 'normal_vec']
+
+    def __repr__(self):
+        repr_str = 'Curve data:\n'
+        for key,val in self.data.items():
+            repr_str+=f'{key}:{val}\n'
+        return repr_str
+    @classmethod
+    def load_from_file(cls, file_path,shape_index=0):
+        file_io = JsonFile(file_path)
+        data = file_io.load()
+        name = list(data.keys())[shape_index]
+        instance = cls(name)
+        instance.update_data(data[name])
+        return instance
+
+    @classmethod
+    def load_from_node(cls, node_name):
+        data = cls.collect_curve_data(node_name)[node_name]
+        instance = CurveData(node_name)
+        instance.update_data(data)
+
+    @staticmethod
+    def collect_curve_data(shape_dag_name):
+        curve_fn = om.MFnNurbsCurve(om.MGlobal.getSelectionListByName(shape_dag_name).getDagPath(0))
+        pos_array = [clamp_list(tuple(i)[:3]) for i in curve_fn.cvPositions()]
+        knots = tuple(curve_fn.knots())
+        degree = curve_fn.degree
+        periodic = curve_fn.kPeriodic
+        data = {shape_dag_name:{
+            'pos_array':pos_array,
+            'knots':knots,
+            'degree':degree,
+            'periodic':periodic
+        }}
+        return data
+
+    @staticmethod
+    def save_node_data(node_name,file_path = '',override=True):
+        data = CurveData.collect_curve_data(node_name)
+        if not file_path:
+            file_path = os.path.join(CurveData.DATA_DIR,f'{node_name}.json')
+        file_io = JsonFile.create(file_path,override=override)
+        file_io.dump(data)
+
+    def apply_data(self, data: dict):
+        pass
+
+    @staticmethod
+    def deserialize_data(data:dict):
+        data['pos_array'] = [om.MVector(i) for i in data['pos_array']]
+        data['knots'] = om.MDoubleArray(data['knots'])
+        return data
+
+    @staticmethod
+    def serialize_data(data):
+        data['pos_array'] =  [tuple(i)[:3] for i in data['pos_array']]
+        data['knots'] = tuple(data['knots'])
+        return data
+
+    def update_data(self,data):
+        self.data = self.serialize_data(data)
+
+        exclude = ['name','normal_vec']
+        for item in self.attrs:
+            if item in exclude:
+                continue
+            setattr(self,item,self.data[item])
+    def check_validate(self):
+        if self.pos_array is None or self.periodic is None or self.knots is None or self.degree == -1:
+            raise ValueError(f'Invalid curve data,\n'
+                             f'pos_array:{self.pos_array}\n'
+                             f'periodic:{self.periodic}\n'
+                             f'knots:{self.knots}\n'
+                             f'degree:{self.degree}')
+
+
+class MCurve(MShape):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership',
                  'hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
                  'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
@@ -95,16 +208,59 @@ class MCurve(object):
                  'referenceObject', 'compInstObjGroups', 'componentTags', 'instMaterialAssign', 'pickTexture', 'tweak',
                  'relativeTweak', 'controlPoints', 'weights', 'tweakLocation', 'blindDataNodes', 'uvPivot', 'uvPivotX',
                  'uvPivotY', 'uvSet', 'currentUVSet', 'displayImmediate', 'displayColors', 'displayColorChannel',
-                 'currentColorSet', 'colorSet', 'header', 'create', 'local', 'lineWidth', 'worldSpace', 'worldNormal',
+                 'currentColorSet', 'colorSet', 'header', 'local', 'lineWidth', 'worldSpace', 'worldNormal',
                  'form', 'degree', 'spans', 'editPoints', 'cached', 'inPlace', 'dispCV', 'dispEP', 'dispHull',
                  'dispCurveEndPoints', 'dispGeometry', 'tweakSize', 'minMaxValue', 'minValue', 'maxValue',
                  'alwaysDrawOnTop']
+    _CREATE_STR = 'nurbsCurve'
 
-    def __init__(self):
+    def __init__(self, shape_node):
+        super().__init__(shape_node)
+        self._check_curve()
+        self.curve_data = CurveData.load_from_node(shape_node)
+
+    def _check_curve(self):
+        node_type = mc.nodeType(self.name)
+        if node_type != self._CREATE_STR:
+            raise RuntimeError(f'{self.name} is not a nurbscurve!')
+        if not mc.objExists(f'{self.name}.cv[*]'):
+            raise RuntimeError(f'{self.name} may has not points,please check it again.')
+
+    @property
+    def curve_fn(self):
+        fn = om.MFnNurbsCurve(self.dag_path.fullPathName())
+        return fn
+
+    @property
+    def points(self):
+        pos = mc.xform(f'{self.name}.cv[*]', q=True, worldSpace=True, translation=True)
+        if len(pos) == 0:
+            raise RuntimeError(f'{self.name} has not points!')
+        pos_array = [pos[i:i + 3] for i in range(0, len(pos), 3)]
+        return pos_array
+
+    @classmethod
+    def create(cls, name=None, curve_data=None, space='', **kwargs):
+        pos_array = [tuple(i) for i in curve_data.pos_array]
+        curve = mc.curve(p=pos_array,
+                         periodic=curve_data.periodic,
+                         knot=curve_data.knots,
+                         degree=curve_data.degree,
+                         name=name)
+        instance = cls(get_child(curve))
+        return instance
+
+    def set_color(self, color):
+        pass
+
+    def set_scale(self, scale_factor):
+        pass
+
+    def set_rotate(self, axis, degree):
         pass
 
 
-class MSurface(object):
+class MSurface(MShape):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership',
                  'hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
                  'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
@@ -150,5 +306,5 @@ class MSurface(object):
                  'gridDivisionPerSpanV', 'explicitTessellationAttributes', 'uDivisionsFactor', 'vDivisionsFactor',
                  'curvatureTolerance', 'basicTessellationType', 'dispSF', 'normalsDisplayScale']
 
-    def __init__(self):
-        pass
+    def __init__(self, shape_node):
+        super().__init__(shape_node)

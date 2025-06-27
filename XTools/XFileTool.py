@@ -173,14 +173,15 @@ class JsonFile(File):
 
     def __init__(self, file_path):
         super().__init__(file_path)
-        self.data = None
+        self.data = {}
 
-    def load(self):
+    def load(self)->dict:
         self.check_exist()
         with open(self.path, 'r', encoding='utf-8') as f:
             file_str = f.read()
             data = json.loads(file_str)
-            self.data = Data(data)
+        self.data = data
+        return self.data
 
     def dump(self, data):
         self.check_exist()
