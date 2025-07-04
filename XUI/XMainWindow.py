@@ -1,11 +1,16 @@
 import math
 import time
 
-from PySide6 import QtCore, QtGui
-from PySide6.QtWidgets import *
-from PySide6.QtCore import QSize
-from PySide6.QtGui import Qt
-
+try:
+    from PySide6 import QtCore, QtGui
+    from PySide6.QtWidgets import *
+    from PySide6.QtCore import QSize
+    from PySide6.QtGui import Qt
+except ModuleNotFoundError:
+    from PySide2 import QtCore, QtGui
+    from PySide2.QtWidgets import *
+    from PySide2.QtCore import QSize
+    from PySide2.QtGui import Qt
 from . import XUIWidgets as xw
 
 

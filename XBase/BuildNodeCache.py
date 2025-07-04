@@ -25,15 +25,21 @@ def build_class(node_name, attrs):
 
 
 def dev():
+    attrs_out = []
     for node_name in get_all_nodes():
         node = mc.createNode(node_name)
-        attrs = mc.listAttr(node, connectable=True)
-        short_attrs = mc.listAttr(node, shortNames=True, connectable=True)
-        attrs.extend(short_attrs)
-        valid_attrs = [i for i in attrs if '.' not in i]
-        res = build_class(node_name, valid_attrs)
-        mc.delete(node)
-        print(res)
+        attrs = mc.listAttr(node)
+        for attr in attrs:
+            if attr in attrs_out or '.' in attr:
+                continue
+            try:
+                at_type = mc.getAttr(f'{node}.{attr}', type=True)
+                if not at_type in attrs_out:
+                    attrs_out.append(at_type)
+            except:
+                print(f'Failed to get {node}.{attr}')
+    print(attrs_out)
+    return attrs_out
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from libfuturize.fixer_util import is_import_stmt
 
 from XBase import *
 from XBase import MTransform as mt
-from XBase.MConstant import AttributeTypes, XSpace
+from XBase.MConstant import AttrType, XSpace
 
 
 class Component(object):
@@ -31,7 +31,7 @@ class IKComponentConfig(object):
         pass
 
 
-class IKComponent(Component):
+class IKComponent(MJointBaseComponent):
 
     def __init__(self, alias, joint_chain: Union['mt.MTripleJointChain', list[str]], config=IKComponentConfig()):
         super().__init__(joint_chain, config)
@@ -62,8 +62,13 @@ class IKComponent(Component):
         mt.MTransform.set_root_space('')
 
 
-class FKComponent(Component):
-    pass
+class FKComponent(MJointBaseComponent):
+
+    def __init__(self, alias, joint_chain, config):
+        super().__init__()
+        self.alias = alias
+        self.joint_chain = joint_chain
+        self.config = config
 
 
 class SplineIKComponentConfig(object):
@@ -79,7 +84,13 @@ class SplineIKComponentConfig(object):
         self.add_controller_properties = True
         self.create_hierarchy = True
         self.use_spline = ""
-        self.attr_type = AttributeTypes.float3
+        self.attr_type = AttrType.Float3
+
+
+class BlendComponent(MJointBaseComponent):
+
+    def __init__(self, alias, joint_chain):
+        super().__init__()
 
 
 class SplineIKComponent(Component):

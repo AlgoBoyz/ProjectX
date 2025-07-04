@@ -1,8 +1,6 @@
 import enum
 
 import os
-from re import split
-from PySide6.QtWidgets import QLineEdit, QSpinBox
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 print(PROJECT_BASE_DIR)
@@ -23,11 +21,26 @@ class ConditionOperation(enum.Enum):
     LessOrEqual = 6
 
 
-class AttributeTypes(enum.Enum):
-    float3 = 'float3'
-    short2 = 'short2'
-    short3 = 'short3'
-    long2 = 'long2'
+class AttrType(object):
+    Message = 'message'
+    Byte = 'byte'
+    Tdatacompound = 'TdataCompound'
+    Matrix = 'matrix'
+
+    Bool = 'bool'
+    Enum = 'enum'
+    String = 'string'
+    Short = 'short'
+    Long = 'long'
+    Int32array = 'Int32Array'
+
+    Float = 'float'
+    Float2 = 'float2'
+    Float3 = 'float3'
+    Double = 'double'
+    Doubleangle = 'doubleAngle'
+    Doublelinear = 'doubleLinear'
+    Double3 = 'double3'
 
 
 class XSpace(object):
@@ -59,3 +72,11 @@ class Axis(enum.Enum):
     XY = (0, 0, 1)
     XZ = (0, 1, 0)
     YZ = (1, 0, 0)
+
+
+class WorldUpType(enum.Enum):
+    Scene = 'scene'
+    Object = 'object'
+    Objectrotation = 'objectrotation'
+    Vector = 'vector'
+    none = 'none'

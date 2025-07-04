@@ -11,3 +11,5 @@ floatMath
 condition
 joint
 locator
+multMatrix
+decomposeMatrix

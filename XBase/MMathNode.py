@@ -28,6 +28,7 @@ class multDoubleLinear(MNode):
         super().__init__(name)
         self.sss = ''
 
+
 class multiplyDivide(MNode):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'operation', 'input1',
                  'input1X', 'input1Y', 'input1Z', 'input2', 'input2X', 'input2Y', 'input2Z', 'output', 'outputX',
@@ -55,6 +56,29 @@ class condition(MNode):
                  'msg', 'cch', 'fzn', 'ihi', 'nds', 'op', 'ft', 'st', 'ct', 'ctr', 'ctg', 'ctb', 'cf', 'cfr', 'cfg',
                  'cfb', 'oc', 'ocr', 'ocg', 'ocb']
     _CREATE_STR = 'condition'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class decomposeMatrix(MNode):
+    _CREATE_STR = 'decomposeMatrix'
+    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'inputMatrix',
+                 'inputRotateOrder', 'outputTranslate', 'outputTranslateX', 'outputTranslateY', 'outputTranslateZ',
+                 'outputRotate', 'outputRotateX', 'outputRotateY', 'outputRotateZ', 'outputScale', 'outputScaleX',
+                 'outputScaleY', 'outputScaleZ', 'outputShear', 'outputShearX', 'outputShearY', 'outputShearZ',
+                 'outputQuat', 'outputQuatX', 'outputQuatY', 'outputQuatZ', 'outputQuatW', 'msg', 'cch', 'fzn', 'ihi',
+                 'nds', 'imat', 'ro', 'ot', 'otx', 'oty', 'otz', 'or', 'orx', 'ory', 'orz', 'os', 'osx', 'osy', 'osz',
+                 'osh', 'oshx', 'oshy', 'oshz', 'oq', 'oqx', 'oqy', 'oqz', 'oqw']
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class multMatrix(MNode):
+    _CREATE_STR = 'multMatrix'
+    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'matrixIn', 'matrixSum',
+                 'msg', 'cch', 'fzn', 'ihi', 'nds', 'i', 'o']
 
     def __init__(self, name):
         super().__init__(name)

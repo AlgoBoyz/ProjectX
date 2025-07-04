@@ -5,67 +5,10 @@ import maya.cmds as mc
 
 from . import MBaseFunctions as mb
 from . import MNodes
-from .MConstant import XSpace
+from .MConstant import XSpace, WorldUpType
+
 
 class MTransform(MNodes.MNode):
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'hyperLayout', 'isCollapsed',
-                 'blackBox', 'borderConnections', 'publishedNodeInfo', 'templateName', 'templatePath', 'viewName',
-                 'iconName', 'viewMode', 'templateVersion', 'uiTreatment', 'customTreatment', 'creator', 'creationDate',
-                 'containerType', 'boundingBox', 'boundingBoxMin', 'boundingBoxMinX', 'boundingBoxMinY',
-                 'boundingBoxMinZ', 'boundingBoxMax', 'boundingBoxMaxX', 'boundingBoxMaxY', 'boundingBoxMaxZ',
-                 'boundingBoxSize', 'boundingBoxSizeX', 'boundingBoxSizeY', 'boundingBoxSizeZ', 'center',
-                 'boundingBoxCenterX', 'boundingBoxCenterY', 'boundingBoxCenterZ', 'matrix', 'inverseMatrix',
-                 'worldMatrix', 'worldInverseMatrix', 'parentMatrix', 'parentInverseMatrix', 'visibility',
-                 'intermediateObject', 'template', 'instObjGroups', 'objectColorRGB', 'objectColorR', 'objectColorG',
-                 'objectColorB', 'wireColorRGB', 'wireColorR', 'wireColorG', 'wireColorB', 'useObjectColor',
-                 'objectColor', 'drawOverride', 'overrideDisplayType', 'overrideLevelOfDetail', 'overrideShading',
-                 'overrideTexturing', 'overridePlayback', 'overrideEnabled', 'overrideVisibility', 'hideOnPlayback',
-                 'overrideRGBColors', 'overrideColor', 'overrideColorRGB', 'overrideColorR', 'overrideColorG',
-                 'overrideColorB', 'overrideColorA', 'lodVisibility', 'selectionChildHighlighting', 'renderInfo',
-                 'identification', 'layerRenderable', 'layerOverrideColor', 'renderLayerInfo', 'ghosting',
-                 'ghostingMode', 'ghostCustomSteps', 'ghostPreFrames', 'ghostPostFrames', 'ghostsStep', 'ghostFrames',
-                 'ghostOpacityRange', 'ghostFarOpacity', 'ghostNearOpacity', 'ghostColorPre', 'ghostColorPreR',
-                 'ghostColorPreG', 'ghostColorPreB', 'ghostColorPost', 'ghostColorPostR', 'ghostColorPostG',
-                 'ghostColorPostB', 'ghostDriver', 'ghostUseDriver', 'hiddenInOutliner', 'useOutlinerColor',
-                 'outlinerColor', 'outlinerColorR', 'outlinerColorG', 'outlinerColorB', 'translate', 'translateX',
-                 'translateY', 'translateZ', 'rotate', 'rotateX', 'rotateY', 'rotateZ', 'rotateOrder', 'scale',
-                 'scaleX', 'scaleY', 'scaleZ', 'shear', 'shearXY', 'shearXZ', 'shearYZ', 'rotatePivot', 'rotatePivotX',
-                 'rotatePivotY', 'rotatePivotZ', 'rotatePivotTranslate', 'rotatePivotTranslateX',
-                 'rotatePivotTranslateY', 'rotatePivotTranslateZ', 'scalePivot', 'scalePivotX', 'scalePivotY',
-                 'scalePivotZ', 'scalePivotTranslate', 'scalePivotTranslateX', 'scalePivotTranslateY',
-                 'scalePivotTranslateZ', 'rotateAxis', 'rotateAxisX', 'rotateAxisY', 'rotateAxisZ',
-                 'transMinusRotatePivot', 'transMinusRotatePivotX', 'transMinusRotatePivotY', 'transMinusRotatePivotZ',
-                 'minTransLimit', 'minTransXLimit', 'minTransYLimit', 'minTransZLimit', 'maxTransLimit',
-                 'maxTransXLimit', 'maxTransYLimit', 'maxTransZLimit', 'minTransLimitEnable', 'minTransXLimitEnable',
-                 'minTransYLimitEnable', 'minTransZLimitEnable', 'maxTransLimitEnable', 'maxTransXLimitEnable',
-                 'maxTransYLimitEnable', 'maxTransZLimitEnable', 'minRotLimit', 'minRotXLimit', 'minRotYLimit',
-                 'minRotZLimit', 'maxRotLimit', 'maxRotXLimit', 'maxRotYLimit', 'maxRotZLimit', 'minRotLimitEnable',
-                 'minRotXLimitEnable', 'minRotYLimitEnable', 'minRotZLimitEnable', 'maxRotLimitEnable',
-                 'maxRotXLimitEnable', 'maxRotYLimitEnable', 'maxRotZLimitEnable', 'minScaleLimit', 'minScaleXLimit',
-                 'minScaleYLimit', 'minScaleZLimit', 'maxScaleLimit', 'maxScaleXLimit', 'maxScaleYLimit',
-                 'maxScaleZLimit', 'minScaleLimitEnable', 'minScaleXLimitEnable', 'minScaleYLimitEnable',
-                 'minScaleZLimitEnable', 'maxScaleLimitEnable', 'maxScaleXLimitEnable', 'maxScaleYLimitEnable',
-                 'maxScaleZLimitEnable', 'offsetParentMatrix', 'dagLocalMatrix', 'dagLocalInverseMatrix', 'geometry',
-                 'xformMatrix', 'selectHandle', 'selectHandleX', 'selectHandleY', 'selectHandleZ', 'inheritsTransform',
-                 'displayHandle', 'displayScalePivot', 'displayRotatePivot', 'displayLocalAxis', 'dynamics',
-                 'showManipDefault', 'specifiedManipLocation', 'rotateQuaternion', 'rotateQuaternionX',
-                 'rotateQuaternionY', 'rotateQuaternionZ', 'rotateQuaternionW', 'rotationInterpolation', 'msg', 'cch',
-                 'fzn', 'ihi', 'nds', 'hl', 'isc', 'bbx', 'boc', 'pni', 'tna', 'tpt', 'vwn', 'icn', 'vwm', 'tpv', 'uit',
-                 'ctrt', 'ctor', 'cdat', 'ctyp', 'bb', 'bbmn', 'bbnx', 'bbny', 'bbnz', 'bbmx', 'bbxx', 'bbxy', 'bbxz',
-                 'bbsi', 'bbsx', 'bbsy', 'bbsz', 'c', 'bcx', 'bcy', 'bcz', 'm', 'im', 'wm', 'wim', 'pm', 'pim', 'v',
-                 'io', 'tmp', 'iog', 'obcc', 'obcr', 'obcg', 'obcb', 'wfcc', 'wfcr', 'wfcg', 'wfcb', 'uoc', 'oc', 'do',
-                 'ovdt', 'ovlod', 'ovs', 'ovt', 'ovp', 'ove', 'ovv', 'hpb', 'ovrgbf', 'ovc', 'ovrgb', 'ovcr', 'ovcg',
-                 'ovcb', 'ovca', 'lodv', 'sech', 'ri', 'rlid', 'rndr', 'lovc', 'rlio', 'gh', 'gm', 'gcs', 'gprf',
-                 'gpof', 'gstp', 'gf', 'golr', 'gfro', 'gnro', 'gcp', 'grr', 'gpg', 'gpb', 'gac', 'gar', 'gag', 'gab',
-                 'gdr', 'gud', 'hio', 'uocol', 'oclr', 'oclrr', 'oclrg', 'oclrb', 't', 'tx', 'ty', 'tz', 'r', 'rx',
-                 'ry', 'rz', 'ro', 's', 'sx', 'sy', 'sz', 'sh', 'shxy', 'shxz', 'shyz', 'rp', 'rpx', 'rpy', 'rpz',
-                 'rpt', 'rptx', 'rpty', 'rptz', 'sp', 'spx', 'spy', 'spz', 'spt', 'sptx', 'spty', 'sptz', 'ra', 'rax',
-                 'ray', 'raz', 'tmrp', 'tmrx', 'tmry', 'tmrz', 'mntl', 'mtxl', 'mtyl', 'mtzl', 'mxtl', 'xtxl', 'xtyl',
-                 'xtzl', 'mtle', 'mtxe', 'mtye', 'mtze', 'xtle', 'xtxe', 'xtye', 'xtze', 'mnrl', 'mrxl', 'mryl', 'mrzl',
-                 'mxrl', 'xrxl', 'xryl', 'xrzl', 'mrle', 'mrxe', 'mrye', 'mrze', 'xrle', 'xrxe', 'xrye', 'xrze', 'mnsl',
-                 'msxl', 'msyl', 'mszl', 'mxsl', 'xsxl', 'xsyl', 'xszl', 'msle', 'msxe', 'msye', 'msze', 'xsle', 'xsxe',
-                 'xsye', 'xsze', 'opm', 'dlm', 'dlim', 'g', 'xm', 'hdl', 'hdlx', 'hdly', 'hdlz', 'it', 'dh', 'dsp',
-                 'drp', 'dla', 'dyn', 'smd', 'sml', 'rq', 'rqx', 'rqy', 'rqz', 'rqw', 'roi']
     _CREATE_STR = 'transform'
     root_space = XSpace.transform_root
 
@@ -78,7 +21,7 @@ class MTransform(MNodes.MNode):
         cls.root_space = root
 
     @classmethod
-    def create(cls, name=None, **kwargs):
+    def create(cls, name=None, **kwargs) -> 'MTransform':
         if cls.root_space:
             instance = super().create(name, under=cls.root_space, **kwargs)
         else:
@@ -122,7 +65,7 @@ class MTransform(MNodes.MNode):
             raise RuntimeError(f'Failed to retrive parent of {self.name}\nresult:{p}')
 
     def set_parent(self, parent):
-        if parent is None:
+        if parent is None or parent == 'None':
             if self.parent is None:
                 return True
             else:
@@ -134,11 +77,29 @@ class MTransform(MNodes.MNode):
         else:
             raise RuntimeError(f'Parent object do not exist :{parent}')
 
+    def set_aim_constraint(self, other: str,
+                           aim_vec, up_vec,
+                           up_type, up_obj):
+        constraint_node = None
+        if up_type == WorldUpType.Vector.value:
+            constraint_node = mc.aimConstraint(other, self.name, aimVector=aim_vec, upVector=up_vec,
+                                               worldUpType=up_type,
+                                               worldUpVector=up_obj)
+
+        elif up_type == WorldUpType.Object.value:
+            constraint_node = mc.aimConstraint(other, self.name, aimVector=aim_vec, upVector=up_vec,
+                                               worldUpType=up_type,
+                                               worldUpObject=up_obj)
+        return constraint_node
+
     def insert_parent(self, name):
         pass
 
     def unparent(self):
         pass
+
+    def freeze(self, translate=True, rotate=True, scale=True):
+        mc.makeIdentity(self.name, translate=translate, rotate=rotate, scale=scale)
 
     def match(self, other, **kwargs):
         if isinstance(other, str):
@@ -185,80 +146,38 @@ class MLocator(MTransform):
 class MJoint(MTransform):
     _CREATE_STR = 'joint'
     root_space = XSpace.joint_root
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'hyperLayout', 'isCollapsed',
-                 'blackBox', 'borderConnections', 'publishedNodeInfo', 'templateName', 'templatePath', 'viewName',
-                 'iconName', 'viewMode', 'templateVersion', 'uiTreatment', 'customTreatment', 'creator', 'creationDate',
-                 'containerType', 'boundingBox', 'boundingBoxMin', 'boundingBoxMinX', 'boundingBoxMinY',
-                 'boundingBoxMinZ', 'boundingBoxMax', 'boundingBoxMaxX', 'boundingBoxMaxY', 'boundingBoxMaxZ',
-                 'boundingBoxSize', 'boundingBoxSizeX', 'boundingBoxSizeY', 'boundingBoxSizeZ', 'center',
-                 'boundingBoxCenterX', 'boundingBoxCenterY', 'boundingBoxCenterZ', 'matrix', 'inverseMatrix',
-                 'worldMatrix', 'worldInverseMatrix', 'parentMatrix', 'parentInverseMatrix', 'visibility',
-                 'intermediateObject', 'template', 'instObjGroups', 'objectColorRGB', 'objectColorR', 'objectColorG',
-                 'objectColorB', 'wireColorRGB', 'wireColorR', 'wireColorG', 'wireColorB', 'useObjectColor',
-                 'objectColor', 'drawOverride', 'overrideDisplayType', 'overrideLevelOfDetail', 'overrideShading',
-                 'overrideTexturing', 'overridePlayback', 'overrideEnabled', 'overrideVisibility', 'hideOnPlayback',
-                 'overrideRGBColors', 'overrideColor', 'overrideColorRGB', 'overrideColorR', 'overrideColorG',
-                 'overrideColorB', 'overrideColorA', 'lodVisibility', 'selectionChildHighlighting', 'renderInfo',
-                 'identification', 'layerRenderable', 'layerOverrideColor', 'renderLayerInfo', 'ghosting',
-                 'ghostingMode', 'ghostCustomSteps', 'ghostPreFrames', 'ghostPostFrames', 'ghostsStep', 'ghostFrames',
-                 'ghostOpacityRange', 'ghostFarOpacity', 'ghostNearOpacity', 'ghostColorPre', 'ghostColorPreR',
-                 'ghostColorPreG', 'ghostColorPreB', 'ghostColorPost', 'ghostColorPostR', 'ghostColorPostG',
-                 'ghostColorPostB', 'ghostDriver', 'ghostUseDriver', 'hiddenInOutliner', 'useOutlinerColor',
-                 'outlinerColor', 'outlinerColorR', 'outlinerColorG', 'outlinerColorB', 'translate', 'translateX',
-                 'translateY', 'translateZ', 'rotate', 'rotateX', 'rotateY', 'rotateZ', 'rotateOrder', 'scale',
-                 'scaleX', 'scaleY', 'scaleZ', 'shear', 'shearXY', 'shearXZ', 'shearYZ', 'rotatePivot', 'rotatePivotX',
-                 'rotatePivotY', 'rotatePivotZ', 'rotatePivotTranslate', 'rotatePivotTranslateX',
-                 'rotatePivotTranslateY', 'rotatePivotTranslateZ', 'scalePivot', 'scalePivotX', 'scalePivotY',
-                 'scalePivotZ', 'scalePivotTranslate', 'scalePivotTranslateX', 'scalePivotTranslateY',
-                 'scalePivotTranslateZ', 'rotateAxis', 'rotateAxisX', 'rotateAxisY', 'rotateAxisZ',
-                 'transMinusRotatePivot', 'transMinusRotatePivotX', 'transMinusRotatePivotY', 'transMinusRotatePivotZ',
-                 'minTransLimit', 'minTransXLimit', 'minTransYLimit', 'minTransZLimit', 'maxTransLimit',
-                 'maxTransXLimit', 'maxTransYLimit', 'maxTransZLimit', 'minTransLimitEnable', 'minTransXLimitEnable',
-                 'minTransYLimitEnable', 'minTransZLimitEnable', 'maxTransLimitEnable', 'maxTransXLimitEnable',
-                 'maxTransYLimitEnable', 'maxTransZLimitEnable', 'minRotLimit', 'minRotXLimit', 'minRotYLimit',
-                 'minRotZLimit', 'maxRotLimit', 'maxRotXLimit', 'maxRotYLimit', 'maxRotZLimit', 'minRotLimitEnable',
-                 'minRotXLimitEnable', 'minRotYLimitEnable', 'minRotZLimitEnable', 'maxRotLimitEnable',
-                 'maxRotXLimitEnable', 'maxRotYLimitEnable', 'maxRotZLimitEnable', 'minScaleLimit', 'minScaleXLimit',
-                 'minScaleYLimit', 'minScaleZLimit', 'maxScaleLimit', 'maxScaleXLimit', 'maxScaleYLimit',
-                 'maxScaleZLimit', 'minScaleLimitEnable', 'minScaleXLimitEnable', 'minScaleYLimitEnable',
-                 'minScaleZLimitEnable', 'maxScaleLimitEnable', 'maxScaleXLimitEnable', 'maxScaleYLimitEnable',
-                 'maxScaleZLimitEnable', 'offsetParentMatrix', 'dagLocalMatrix', 'dagLocalInverseMatrix', 'geometry',
-                 'xformMatrix', 'selectHandle', 'selectHandleX', 'selectHandleY', 'selectHandleZ', 'inheritsTransform',
-                 'displayHandle', 'displayScalePivot', 'displayRotatePivot', 'displayLocalAxis', 'dynamics',
-                 'showManipDefault', 'specifiedManipLocation', 'rotateQuaternion', 'rotateQuaternionX',
-                 'rotateQuaternionY', 'rotateQuaternionZ', 'rotateQuaternionW', 'rotationInterpolation', 'jointTypeX',
-                 'jointTypeY', 'jointTypeZ', 'jointOrient', 'jointOrientX', 'jointOrientY', 'jointOrientZ',
-                 'segmentScaleCompensate', 'inverseScale', 'inverseScaleX', 'inverseScaleY', 'inverseScaleZ',
-                 'stiffness', 'stiffnessX', 'stiffnessY', 'stiffnessZ', 'preferredAngle', 'preferredAngleX',
-                 'preferredAngleY', 'preferredAngleZ', 'minRotateDampRange', 'minRotateDampRangeX',
-                 'minRotateDampRangeY', 'minRotateDampRangeZ', 'minRotateDampStrength', 'minRotateDampStrengthX',
-                 'minRotateDampStrengthY', 'minRotateDampStrengthZ', 'maxRotateDampRange', 'maxRotateDampRangeX',
-                 'maxRotateDampRangeY', 'maxRotateDampRangeZ', 'maxRotateDampStrength', 'maxRotateDampStrengthX',
-                 'maxRotateDampStrengthY', 'maxRotateDampStrengthZ', 'bindPose', 'drawStyle', 'drawLabel', 'radius',
-                 'hikNodeID', 'hikFkJoint', 'msg', 'cch', 'fzn', 'ihi', 'nds', 'hl', 'isc', 'bbx', 'boc', 'pni', 'tna',
-                 'tpt', 'vwn', 'icn', 'vwm', 'tpv', 'uit', 'ctrt', 'ctor', 'cdat', 'ctyp', 'bb', 'bbmn', 'bbnx', 'bbny',
-                 'bbnz', 'bbmx', 'bbxx', 'bbxy', 'bbxz', 'bbsi', 'bbsx', 'bbsy', 'bbsz', 'c', 'bcx', 'bcy', 'bcz', 'm',
-                 'im', 'wm', 'wim', 'pm', 'pim', 'v', 'io', 'tmp', 'iog', 'obcc', 'obcr', 'obcg', 'obcb', 'wfcc',
-                 'wfcr', 'wfcg', 'wfcb', 'uoc', 'oc', 'do', 'ovdt', 'ovlod', 'ovs', 'ovt', 'ovp', 'ove', 'ovv', 'hpb',
-                 'ovrgbf', 'ovc', 'ovrgb', 'ovcr', 'ovcg', 'ovcb', 'ovca', 'lodv', 'sech', 'ri', 'rlid', 'rndr', 'lovc',
-                 'rlio', 'gh', 'gm', 'gcs', 'gprf', 'gpof', 'gstp', 'gf', 'golr', 'gfro', 'gnro', 'gcp', 'grr', 'gpg',
-                 'gpb', 'gac', 'gar', 'gag', 'gab', 'gdr', 'gud', 'hio', 'uocol', 'oclr', 'oclrr', 'oclrg', 'oclrb',
-                 't', 'tx', 'ty', 'tz', 'r', 'rx', 'ry', 'rz', 'ro', 's', 'sx', 'sy', 'sz', 'sh', 'shxy', 'shxz',
-                 'shyz', 'rp', 'rpx', 'rpy', 'rpz', 'rpt', 'rptx', 'rpty', 'rptz', 'sp', 'spx', 'spy', 'spz', 'spt',
-                 'sptx', 'spty', 'sptz', 'ra', 'rax', 'ray', 'raz', 'tmrp', 'tmrx', 'tmry', 'tmrz', 'mntl', 'mtxl',
-                 'mtyl', 'mtzl', 'mxtl', 'xtxl', 'xtyl', 'xtzl', 'mtle', 'mtxe', 'mtye', 'mtze', 'xtle', 'xtxe', 'xtye',
-                 'xtze', 'mnrl', 'mrxl', 'mryl', 'mrzl', 'mxrl', 'xrxl', 'xryl', 'xrzl', 'mrle', 'mrxe', 'mrye', 'mrze',
-                 'xrle', 'xrxe', 'xrye', 'xrze', 'mnsl', 'msxl', 'msyl', 'mszl', 'mxsl', 'xsxl', 'xsyl', 'xszl', 'msle',
-                 'msxe', 'msye', 'msze', 'xsle', 'xsxe', 'xsye', 'xsze', 'opm', 'dlm', 'dlim', 'g', 'xm', 'hdl', 'hdlx',
-                 'hdly', 'hdlz', 'it', 'dh', 'dsp', 'drp', 'dla', 'dyn', 'smd', 'sml', 'rq', 'rqx', 'rqy', 'rqz', 'rqw',
-                 'roi', 'jtx', 'jty', 'jtz', 'jo', 'jox', 'joy', 'joz', 'ssc', 'is', 'isx', 'isy', 'isz', 'st', 'stx',
-                 'sty', 'stz', 'pa', 'pax', 'pay', 'paz', 'ndr', 'ndx', 'ndy', 'ndz', 'nst', 'nstx', 'nsty', 'nstz',
-                 'xdr', 'xdx', 'xdy', 'xdz', 'xst', 'xstx', 'xsty', 'xstz', 'bps', 'ds', 'dl', 'radi', 'hni', 'hfk']
 
     @classmethod
-    def create(cls, name=None, **kwargs):
+    def create(cls, name=None, **kwargs) -> 'MJoint':
         instance = super().create(name, **kwargs)
-        return instance
+
+        return cls(instance)
+
+    @property
+    def joint_data(self):
+        data = {
+            'name': self.name,
+            'pos': tuple(self.world_pos)[:3],
+            'rot': self.rotate.value,
+            'scale': self.scale.value,
+            'orient': self.rotateOrder.value,
+            'parent': str(self.parent)
+
+        }
+        return data
+
+    @classmethod
+    def recreate_from_data(cls, data):
+        jnt_name = data['name']
+        if mc.objExists(jnt_name):
+            raise RuntimeError(f'Joint: {jnt_name} already exist!')
+        jnt = cls.create(jnt_name)
+        jnt.set_parent(data['parent'])
+        jnt.rotateOrder.set(data['orient'])
+        jnt.translate.set(data['pos'])
+        jnt.rotate.set(data['rot'])
+        jnt.scale.set(data['scale'])
+        return jnt
 
 
 class MTransformList(object):
@@ -351,6 +270,13 @@ class MJointChain(MJointSet):
         instance.parent_all()
         return cls(instance.node_names)
 
+    @property
+    def plane_normal(self):
+        from XBase.MBaseFunctions import calculate_plane_normal
+        vec1 = self[1].world_pos - self[0].world_pos
+        vec2 = self[2].world_pos - self[1].world_pos
+        normal = calculate_plane_normal(vec1, vec2)
+
     def update_chain(self):
         self.unparent_all()
         self.parent_all()
@@ -361,8 +287,36 @@ class MJointChain(MJointSet):
     def duplicate(self):
         pass
 
-    def reorient(self):
-        pass
+    def reorient(self, aim_aixs, up_axis, up_obj):
+        previous_parent = self[0].parent
+        self.unparent_all()
+        for i, jnt in enumerate(self):
+            if not i == self.length - 1:
+                print(i, self.length)
+                constraint_node = jnt.set_aim_constraint(
+                    other=self.node_names[i + 1],
+                    aim_vec=aim_aixs,
+                    up_vec=up_axis,
+                    up_type=WorldUpType.Object.value,
+                    up_obj=up_obj
+                )
+            else:
+                constraint_node = jnt.set_aim_constraint(
+                    other=self.node_names[i - 1],
+                    aim_vec=mb.revert_axis(aim_aixs),
+                    up_vec=up_axis,
+                    up_type=WorldUpType.Object.value,
+                    up_obj=up_obj
+                )
+            mc.refresh()
+            mc.delete(constraint_node)
+            jnt.freeze()
+        self.parent_all()
+        self[0].set_parent(previous_parent)
+
+    def reorient_to_plane_normal(self):
+        for jnt in self.nodes:
+            pass
 
     def reverse_chain(self):
         self.unparent_all()
