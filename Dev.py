@@ -2,12 +2,15 @@ from importlib import reload
 import os.path
 import sys
 
+from maya.OpenMaya import MVector
+
+from XBase.MMathNode import remapValue
 from maya.cmds import polyPlane
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from XBase.MTransform import MJointChain
+from XBase.MTransform import MJointChain, MJointSet
 from XBase.MTransform import MJoint
 
 path = os.path.dirname(__file__)
@@ -183,19 +186,16 @@ def dev_create_joints(num, alias='', offset=1, parent=True, attr='tx'):
 
 
 def dev_reoient():
+    # dev_reset_scene()
+    from XBase.MConstant import Axis
     from XBase.MTransform import MJointChain
-    sel = mc.ls(selection=True)
-    jc = MJointChain(sel)
-    # standlone()
-    # jc = MJointChain.create(['test1', 'test2'])
-    # up_obj = mt.MTransform.create('test_transform').name
-    from XBase.MConstant import WorldUpType, Axis
-    jc.reorient(Axis.X.value, Axis.Y.value, up_obj='LF_Arm_01_PoleVec_loc')
+    jnts = MJointChain(mc.ls(selection=True))
+    jnts.reorient_to_plane_normal(Axis.Y.name, Axis.X.name)
 
 
 def dev_template():
     # dev_reset_scene()
-    # standlone()
+    standlone()
     names = ['Shoulder', 'Elbow', 'Wrist']
     # jnts = dev_create_joints(num=3, alias='Test', offset=10, parent=True, attr='tx')
     # for i, jnt in enumerate(jnts):
@@ -209,12 +209,96 @@ def dev_build_node_slot():
     standlone()
     from XBase import BuildNodeCache
     attrs: list[str] = BuildNodeCache.dev()
-    for at in attrs:
-        print(f"{at.capitalize()} = '{at}'")
+    print(attrs)
+    # for at in attrs:
+    #     print(f"{at.capitalize()} = '{at}'")
+
+
+def dev_skirt():
+    from XBase.MMathNode import colorMath, dotProduct, setRange
+    from XBase.MConstant import Axis
+    import math
+    dev_reset_scene()
+
+    test_scene_path = r'F:\作品集\Rig\Skirt\skirt_test_scene.mb'
+    mc.file(test_scene_path, i=True)
+    leg_jc = MJointChain.create(['Leg_01_Jnt', 'Leg_02_Jnt'])
+    leg_jc[1].ty.set(1.6)
+    skirt_mesh = 'skirt_meshShape'
+    origin_loc = mt.MTransform.create('origin_loc')
+    origin_loc_tip = mt.MTransform.create('origin_loc_tip')
+    mc.pointConstraint(leg_jc[1].name, origin_loc_tip.name)
+
+    leg_vec_node = colorMath.create(name='leg_vec')
+    leg_vec_node.operation.set(1)
+    origin_loc_tip.translate.connect(leg_vec_node.colorB)
+    origin_loc.translate.connect(leg_vec_node.colorA)
+
+    raw_data_node = mt.MTransform.create('raw')
+    remap_data_node = mt.MTransform.create('remap')
+    leg_jc[0].add_attr(attr_name='param1', at='float', k=True)
+
+    for idx in range(20):
+        attr_name = f'Jnt_{idx}_dot'
+        raw_data_node.add_attr(attr_name=attr_name, at='float', k=True)
+        vtx = f'{skirt_mesh}.vtx[{idx}]'
+        vtx_up = f'{skirt_mesh}.vtx[{idx + 20}]'
+
+        jc = MJointSet.create([f'Jnt_{vtx}', f'Jnt_{vtx_up}'])
+        jc[0].translate.set(mc.xform(vtx, worldSpace=True, translation=True, q=True))
+        jc[1].translate.set(mc.xform(vtx_up, worldSpace=True, translation=True, q=True))
+        jc[1].set_parent(jc[0])
+
+        # set orientation
+        aim_vector = list((jc[0].world_pos - leg_jc[0].world_pos).normal())
+        jc[0].reorient(aim_axis=Axis.X.name, aim_vec=aim_vector,
+                       up_axis=Axis.Y.name, up_vec=[0.0, 1.0, 0.0])
+
+        target_loc = mt.MTransform.create(f'target_loc_{vtx_up}')
+        target_loc.translate.set(mc.xform(jc[1].name, worldSpace=True, translation=True, q=True))
+        target_vec = colorMath.create(name=f'{target_loc.name}_vec')
+        target_vec.operation.set(1)
+
+        origin_loc.translate.connect(target_vec.colorB)
+        target_loc.translate.connect(target_vec.colorA)
+
+        dot = dotProduct.create(f'dot_{vtx_up}')
+
+        leg_vec_node.outColor.connect(dot.input2)
+        target_vec.outColor.connect(dot.input1)
+
+        dot.output.connect(raw_data_node.attr(attr_name))
+
+        remap = remapValue.create(f'remap_{attr_name}')
+        raw_data_node.attr(attr_name).connect(remap.inputValue)
+        remap.inputMin.set(-3.052)
+        remap.inputMax.set(-2.668)
+
+        remap.outputMin.set(0)
+        remap.outputMax.set(1)
+
+        remap_attr_name = f'Jnt_{idx}_remap'
+        remap_data_node.add_attr(attr_name=remap_attr_name, at='float', k=True)
+
+        remap.outValue.connect(f'{remap_data_node}.{remap_attr_name}')
+
+        # getattr(sRange, remap_attr_name).connect()
+        jc[0].freeze()
+
+        rot_remap = remapValue.create(f'Jnt_{idx}_rot_remap')
+        remap_data_node.attr(remap_attr_name).connect(rot_remap.inputValue)
+        rot_remap.inputMin.set(0)
+        rot_remap.inputMax.set(1)
+
+        rot_remap.outputMin.set(-40)
+        rot_remap.outputMax.set(0)
+
+        rot_remap.outValue.connect(jc[0].rz)
+
+        mc.connectAttr(f'{leg_jc[0].name}.param1', f'{rot_remap.name}.value[0].value_Position')
 
 
 if __name__ == '__main__':
-    import maya.api.OpenMayaAnim as oman
-
-    # help(oman)
-    dev_template()
+    # help(om.MVector)
+    standlone()
+    dev_reoient()

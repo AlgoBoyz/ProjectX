@@ -32,12 +32,13 @@ def dev():
         for attr in attrs:
             if attr in attrs_out or '.' in attr:
                 continue
-            try:
-                at_type = mc.getAttr(f'{node}.{attr}', type=True)
-                if not at_type in attrs_out:
-                    attrs_out.append(at_type)
-            except:
-                print(f'Failed to get {node}.{attr}')
+            # try:
+            #     at_type = mc.getAttr(f'{node}.{attr}', type=True)
+            #     if not at_type in attrs_out:
+            #         attrs_out.append(at_type)
+            # except:
+            #     print(f'Failed to get {node}.{attr}')
+            attrs_out.append(attr)
     print(attrs_out)
     return attrs_out
 

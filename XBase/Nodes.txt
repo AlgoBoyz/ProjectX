@@ -13,3 +13,4 @@ joint
 locator
 multMatrix
 decomposeMatrix
+colorMath

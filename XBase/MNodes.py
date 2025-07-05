@@ -214,7 +214,7 @@ class MNode(object):
         return dag_path
 
     def add_attr(self, attr_name: str, **kwargs):
-        mc.addAttr(self.name, **kwargs)
+        mc.addAttr(self.name, longName=attr_name, **kwargs)
         return MAttribute(self.name, attr_name)
 
     def add_to_set(self, set_name):
@@ -222,6 +222,10 @@ class MNode(object):
 
     def rename(self, new_name):
         mc.rename(self.name, new_name)
+
+    def attr(self, item):
+
+        return MAttribute(self.name, item)
 
 
 class MAttribute(object):
@@ -320,7 +324,8 @@ class MAttribute(object):
         pass
 
     def set(self, value):
-        print(self.attr_type)
+        if isinstance(value, list):
+            print(self.full_name, value, len(value))
         if isinstance(value, int) and self.attr_type in ['double', 'float', 'doubleLinear', 'doubleAngle']:
             print(f'Assigning an int({value}) to a float or double ,convert the value to {float(value)}')
             value = float(value)
@@ -328,6 +333,8 @@ class MAttribute(object):
             value = value.value
         if self.attr_type in ['float3', 'double3', 'float2']:
             mc.setAttr(self.full_name, *value)
+        elif self.attr_type in ['matrix']:
+            mc.setAttr(self.full_name, value, type=self.attr_type)
         else:
             mc.setAttr(self.full_name, value)
 

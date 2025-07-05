@@ -1,11 +1,13 @@
 from typing import Iterator, Union
 
+from maya.OpenMaya import MVector
+
 import maya.api.OpenMaya as om
 import maya.cmds as mc
 
 from . import MBaseFunctions as mb
 from . import MNodes
-from .MConstant import XSpace, WorldUpType
+from .MConstant import XSpace, WorldUpType, Axis, Matrix
 
 
 class MTransform(MNodes.MNode):
@@ -99,7 +101,7 @@ class MTransform(MNodes.MNode):
         pass
 
     def freeze(self, translate=True, rotate=True, scale=True):
-        mc.makeIdentity(self.name, translate=translate, rotate=rotate, scale=scale)
+        mc.makeIdentity(self.name, apply=True, translate=translate, rotate=rotate, scale=scale)
 
     def match(self, other, **kwargs):
         if isinstance(other, str):
@@ -131,8 +133,40 @@ class MTransform(MNodes.MNode):
         vec = om.MVector(other.world_pos) - om.MVector(self.world_pos)
         return vec
 
-    def reorient(self, aim_vec, up_vec, aim_axis, up_axis):
-        pass
+    def get_world_matrix(self):
+        mat = self.worldMatrix.value
+        mat = [mat[i:i + 4] for i in range(0, 16, 4)]
+        return mat
+
+    def reorient(self, aim_axis, aim_vec, up_axis, up_vec):
+        print(f'Reorienting node:{self.name}')
+        axis_index_look_up = {Axis.X.name: 0, Axis.Y.name: 1, Axis.Z.name: 2}
+
+        lst = [i for i in axis_index_look_up.values()]
+
+        mat = self.get_world_matrix()
+        aim_index = axis_index_look_up[aim_axis]
+        lst.remove(aim_index)
+        up_index = axis_index_look_up[up_axis]
+        lst.remove(up_index)
+        third_index = lst[0]
+        third_vec = mb.normalize_vector(mb.cross_product(aim_vec, up_vec))
+        aim_vec.append(0.0)
+        up_vec.append(0.0)
+        third_vec.append(0.0)
+        mat[aim_index] = aim_vec[:4]
+        mat[up_index] = up_vec[:4]
+        mat[third_index] = third_vec[:4]
+        # print('aim2', aim_vec)
+        # print('up2', up_vec)
+        # print('third', third_vec)
+        reformat_mat = []
+        for lst in mat:
+            for i in lst:
+                reformat_mat.append(i)
+        # print(f'Matrix previous :{reformat_mat}')
+        mc.xform(self.name, matrix=reformat_mat)
+        # print(f'Matrix after :{self.worldMatrix.value}')
 
 
 class MLocator(MTransform):
@@ -201,11 +235,11 @@ class MTransformList(object):
 
     def _init_node_list(self):
         lst_types = mb.get_list_types(self.node_names)
-        if len(lst_types) > 1:
+        if isinstance(lst_types, list) and len(lst_types) > 1:
             raise ValueError(f'Input joint list:{self.nodes} has more than one type:{lst_types}')
-        if lst_types[0] == str:
+        if lst_types == str:
             self.nodes = [self.MEMBER_TYPE(name) for name in self.node_names]
-        elif lst_types[0] == self.MEMBER_TYPE:
+        elif lst_types == self.MEMBER_TYPE:
             self.nodes = self.node_names
             self.node_names = [jnt.name for jnt in self.node_names]
 
@@ -276,6 +310,7 @@ class MJointChain(MJointSet):
         vec1 = self[1].world_pos - self[0].world_pos
         vec2 = self[2].world_pos - self[1].world_pos
         normal = calculate_plane_normal(vec1, vec2)
+        return normal
 
     def update_chain(self):
         self.unparent_all()
@@ -314,13 +349,36 @@ class MJointChain(MJointSet):
         self.parent_all()
         self[0].set_parent(previous_parent)
 
-    def reorient_to_plane_normal(self):
-        for jnt in self.nodes:
-            pass
+    def reorient_to_plane_normal(self, aim_axis, up_axis):
+        pre_parent = self[0].parent
+        self.unparent_all()
+        aim_vecs = []
+        for i, jnt in enumerate(self):
+            matrix = jnt.worldMatrix.value
+            vec_array = [matrix[i:i + 4] for i in range(0, 16, 4)]
+            if i != self.length - 1:
+                jnt_aim_vec = [round(i, 10) for i in tuple((self[i + 1].world_pos - jnt.world_pos).normal())]
+            else:
+                jnt_aim_vec = aim_vecs[i - 1]
+
+            aim_vecs.append(jnt_aim_vec)
+            print(self.plane_normal, 'plane normal')
+            print(jnt_aim_vec, 'aim')
+            jnt.reorient(aim_axis=aim_axis,
+                         aim_vec=mb.normalize_vector(jnt_aim_vec),
+                         up_axis=up_axis,
+                         up_vec=mb.normalize_vector(self.plane_normal))
+            jnt.freeze()
+        self.parent_all()
+        self[0].set_parent(pre_parent)
 
     def reverse_chain(self):
         self.unparent_all()
         self.parent_all(reverse=True)
+
+    def freeze(self):
+        for jnt in self:
+            jnt.freeze()
 
 
 class MTripleJointChain(MJointChain):

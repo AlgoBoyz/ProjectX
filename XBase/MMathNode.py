@@ -7,8 +7,6 @@ from .MNodes import MNode
 
 
 class addDoubleLinear(MNode):
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'input1', 'input2', 'output',
-                 'msg', 'cch', 'fzn', 'ihi', 'nds', 'i1', 'i2', 'o']
     _CREATE_STR = 'addDoubleLinear'
     if sys.version_info.minor == 11:
         _CREATE_STR = 'addDL'
@@ -18,8 +16,6 @@ class addDoubleLinear(MNode):
 
 
 class multDoubleLinear(MNode):
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'input1', 'input2', 'output',
-                 'msg', 'cch', 'fzn', 'ihi', 'nds', 'i1', 'i2', 'o']
     _CREATE_STR = 'multDoubleLinear'
     if sys.version_info.minor == 11:
         _CREATE_STR = 'multDL'
@@ -30,10 +26,6 @@ class multDoubleLinear(MNode):
 
 
 class multiplyDivide(MNode):
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'operation', 'input1',
-                 'input1X', 'input1Y', 'input1Z', 'input2', 'input2X', 'input2Y', 'input2Z', 'output', 'outputX',
-                 'outputY', 'outputZ', 'msg', 'cch', 'fzn', 'ihi', 'nds', 'op', 'i1', 'i1x', 'i1y', 'i1z', 'i2', 'i2x',
-                 'i2y', 'i2z', 'o', 'ox', 'oy', 'oz']
     _CREATE_STR = 'multiplyDivide'
 
     def __init__(self, name):
@@ -41,8 +33,6 @@ class multiplyDivide(MNode):
 
 
 class floatMath(MNode):
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'floatA', 'floatB',
-                 'outFloat', 'msg', 'cch', 'fzn', 'ihi', 'nds', '_fa', '_fb', 'of']
     _CREATE_STR = 'floatMath'
 
     def __init__(self, name):
@@ -50,11 +40,6 @@ class floatMath(MNode):
 
 
 class condition(MNode):
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'operation', 'firstTerm',
-                 'secondTerm', 'colorIfTrue', 'colorIfTrueR', 'colorIfTrueG', 'colorIfTrueB', 'colorIfFalse',
-                 'colorIfFalseR', 'colorIfFalseG', 'colorIfFalseB', 'outColor', 'outColorR', 'outColorG', 'outColorB',
-                 'msg', 'cch', 'fzn', 'ihi', 'nds', 'op', 'ft', 'st', 'ct', 'ctr', 'ctg', 'ctb', 'cf', 'cfr', 'cfg',
-                 'cfb', 'oc', 'ocr', 'ocg', 'ocb']
     _CREATE_STR = 'condition'
 
     def __init__(self, name):
@@ -63,13 +48,6 @@ class condition(MNode):
 
 class decomposeMatrix(MNode):
     _CREATE_STR = 'decomposeMatrix'
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'inputMatrix',
-                 'inputRotateOrder', 'outputTranslate', 'outputTranslateX', 'outputTranslateY', 'outputTranslateZ',
-                 'outputRotate', 'outputRotateX', 'outputRotateY', 'outputRotateZ', 'outputScale', 'outputScaleX',
-                 'outputScaleY', 'outputScaleZ', 'outputShear', 'outputShearX', 'outputShearY', 'outputShearZ',
-                 'outputQuat', 'outputQuatX', 'outputQuatY', 'outputQuatZ', 'outputQuatW', 'msg', 'cch', 'fzn', 'ihi',
-                 'nds', 'imat', 'ro', 'ot', 'otx', 'oty', 'otz', 'or', 'orx', 'ory', 'orz', 'os', 'osx', 'osy', 'osz',
-                 'osh', 'oshx', 'oshy', 'oshz', 'oq', 'oqx', 'oqy', 'oqz', 'oqw']
 
     def __init__(self, name):
         super().__init__(name)
@@ -77,8 +55,34 @@ class decomposeMatrix(MNode):
 
 class multMatrix(MNode):
     _CREATE_STR = 'multMatrix'
-    __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'matrixIn', 'matrixSum',
-                 'msg', 'cch', 'fzn', 'ihi', 'nds', 'i', 'o']
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class colorMath(MNode):
+    _CREATE_STR = 'colorMath'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class dotProduct(MNode):
+    _CREATE_STR = 'dotProduct'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class setRange(MNode):
+    _CREATE_STR = 'setRange'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class remapValue(MNode):
+    _CREATE_STR = 'remapValue'
 
     def __init__(self, name):
         super().__init__(name)

@@ -1,3 +1,4 @@
+import math
 import maya.cmds as mc
 
 
@@ -65,12 +66,43 @@ def get_joint_pos_array(joints):
 
 
 def calculate_plane_normal(vec1, vec2):
-    from maya.api.OpenMaya import MVector
-    vec1 = MVector(vec1)
-    vec2 = MVector(vec2)
-    normal = (vec1 ^ vec2).normal()
+    return cross_product(vec1, vec2)
 
-    return normal
+
+def get_third_axis(axis1, axis2):
+    from XBase.MConstant import Axis
+    all_axis = [Axis.X, Axis.Y, Axis.Z]
+    all_axis.remove(axis1)
+    all_axis.remove(axis2)
+    return all_axis[0]
+
+
+def MVector2MatFormat(vec):
+    lst = list(vec)
+    lst.append(0)
+    return lst
+
+
+def List2MVector(lst):
+    from maya.api.OpenMaya import MVector
+    return MVector(lst[0], lst[1], lst[2])
+
+
+def cross_product(v1, v2):
+    x = v1[1] * v2[2] - v1[2] * v2[1]
+    y = v1[2] * v2[0] - v1[0] * v2[2]
+    z = v1[0] * v2[1] - v1[1] * v2[0]
+    return [round(i, 5) for i in [x, y, z]]
+
+
+def dot_product(v1, v2):
+    return round(sum(a * b for a, b in zip(v1, v2)), 5)
+
+
+def normalize_vector(vector):
+    norm = math.sqrt(sum(x ** 2 for x in vector))
+
+    return [round(i, 5) for i in [x / norm for x in vector]]
 
 
 class StrUtils(object):

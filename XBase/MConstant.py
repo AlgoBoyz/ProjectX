@@ -80,3 +80,7 @@ class WorldUpType(enum.Enum):
     Objectrotation = 'objectrotation'
     Vector = 'vector'
     none = 'none'
+
+
+class Matrix(enum.Enum):
+    IndentityMat = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0]]
