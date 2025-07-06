@@ -42,6 +42,9 @@ class AttrType(object):
     Doublelinear = 'doubleLinear'
     Double3 = 'double3'
 
+    ValueType = ['long', 'short', 'float', 'double', 'doubleAngle', 'doubleLinear']
+    CompundType = ['float3', 'double3']
+
 
 class XSpace(object):
     transform_root = ''

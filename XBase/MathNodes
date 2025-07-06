@@ -1,0 +1,13 @@
+multMatrix
+decomposeMatrix
+addDoubleLinear
+addDL
+multDoubleLinear
+multDL
+multiplyDivide
+floatMath
+colorMath
+condition
+remapValue
+setRange
+dotProduct

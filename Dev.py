@@ -3,22 +3,12 @@ import os.path
 import sys
 
 from maya.OpenMaya import MVector
+from mypyc.primitives.misc_ops import type_op
 
-from XBase.MMathNode import remapValue
 from maya.cmds import polyPlane
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
-
-from XBase.MTransform import MJointChain, MJointSet
-from XBase.MTransform import MJoint
-
-path = os.path.dirname(__file__)
-if not path in sys.path:
-    sys.path.append(path)
-import XBase.MTransform as mt
-import XBase.MMathNode as mm
-import XBase.MConstant as mco
 
 import XUI.XMainWindow
 
@@ -27,7 +17,7 @@ import datetime
 print(datetime.datetime.today())
 
 
-def standlone():
+def standalone():
     import maya.standalone
     maya.standalone.initialize()
 
@@ -71,6 +61,7 @@ def reload_stdout():
 
 
 def dev():
+    from XBase import MTransform as mt
     joint_chain = mt.MJointChain.create([f'joint_{i}' for i in range(10)])
     for jnt in joint_chain:
         print(jnt.dp_node)
@@ -78,8 +69,9 @@ def dev():
 
 
 def dev_attribute():
-    node = mt.MJoint.create('joint')
-    node.tx.connect(['joint.ty', 'joint.tz'])
+    from XBase import MTransform as mt
+    jc = mt.MJointChain.create(['jnt1', 'jnt2'])
+    jc[0].t.add(jc[1].t, 'test')
 
 
 def dev_print():
@@ -90,10 +82,16 @@ def dev_print():
 
 
 def dev_mt():
+    from XBase import MTransform as mt
     # mt_node = mt.MTransform.create('test', with_offset=True)
     mt2 = mt.MTransform.create('test2')
     mt2.insert_parent('offset')
     # mt2.set_parent(mt_node)
+
+
+def dev_math():
+    from XBase import MMathNode
+    add = MMathNode.addDoubleLinear.create()
 
 
 def dev_ui():
@@ -107,12 +105,14 @@ def dev_ui():
 
 def dev_component():
     from XModules import MComponent
-    jc = MJointChain.create(['jnt1', 'jnt2', 'jnt3'])
+    from XBase import MTransform as mt
+    jc = mt.MJointChain.create(['jnt1', 'jnt2', 'jnt3'])
     cp = MComponent.IKComponent('LF_Arm_01', jc)
     cp.build()
 
 
 def dev_create_skined_mesh():
+    from XBase import MTransform as mt
     plane = mc.polyPlane(subdivisionsX=5, subdivisionsY=5)[0]
     jnts = [mt.MJoint.create(f'test_jnt_{i}').name for i in range(10)]
 
@@ -121,7 +121,7 @@ def dev_create_skined_mesh():
 
 
 def dev_save_data():
-    standlone()
+    standalone()
     mesh, jnts = dev_create_skined_mesh()
     from XBase import MGeometry
     from XBase.MData import MCurveData, MWeightData, MSkinCluster
@@ -145,7 +145,7 @@ def dev_generate_node_slot():
 
 
 def dev_matrix():
-    standlone()
+    standalone()
     # dev_reset_scene()
     from XBase.MGeometry import MMesh
     from XBase.MTransform import MLocator
@@ -195,7 +195,7 @@ def dev_reoient():
 
 def dev_template():
     # dev_reset_scene()
-    standlone()
+    standalone()
     names = ['Shoulder', 'Elbow', 'Wrist']
     # jnts = dev_create_joints(num=3, alias='Test', offset=10, parent=True, attr='tx')
     # for i, jnt in enumerate(jnts):
@@ -206,23 +206,21 @@ def dev_template():
 
 
 def dev_build_node_slot():
-    standlone()
+    # standalone()
     from XBase import BuildNodeCache
-    attrs: list[str] = BuildNodeCache.dev()
+    attrs = BuildNodeCache.build_math_node_cache()
     print(attrs)
-    # for at in attrs:
-    #     print(f"{at.capitalize()} = '{at}'")
-
 
 def dev_skirt():
-    from XBase.MMathNode import colorMath, dotProduct, setRange
+    from XBase import MTransform as mt
+    from XBase.MMathNode import colorMath, dotProduct, setRange, remapValue
     from XBase.MConstant import Axis
     import math
     dev_reset_scene()
 
     test_scene_path = r'F:\作品集\Rig\Skirt\skirt_test_scene.mb'
     mc.file(test_scene_path, i=True)
-    leg_jc = MJointChain.create(['Leg_01_Jnt', 'Leg_02_Jnt'])
+    leg_jc = mt.MJointChain.create(['Leg_01_Jnt', 'Leg_02_Jnt'])
     leg_jc[1].ty.set(1.6)
     skirt_mesh = 'skirt_meshShape'
     origin_loc = mt.MTransform.create('origin_loc')
@@ -244,7 +242,7 @@ def dev_skirt():
         vtx = f'{skirt_mesh}.vtx[{idx}]'
         vtx_up = f'{skirt_mesh}.vtx[{idx + 20}]'
 
-        jc = MJointSet.create([f'Jnt_{vtx}', f'Jnt_{vtx_up}'])
+        jc = mt.MJointSet.create([f'Jnt_{vtx}', f'Jnt_{vtx_up}'])
         jc[0].translate.set(mc.xform(vtx, worldSpace=True, translation=True, q=True))
         jc[1].translate.set(mc.xform(vtx_up, worldSpace=True, translation=True, q=True))
         jc[1].set_parent(jc[0])
@@ -295,10 +293,13 @@ def dev_skirt():
 
         rot_remap.outValue.connect(jc[0].rz)
 
-        mc.connectAttr(f'{leg_jc[0].name}.param1', f'{rot_remap.name}.value[0].value_Position')
+        # mc.connectAttr(f'{leg_jc[0].name}.param1', f'{rot_remap.name}.value[0].value_Position')
+        leg_jc[0].attr('param1').connect(f'{rot_remap.name}.value[0].value_Position', compund=True)
 
 
 if __name__ == '__main__':
     # help(om.MVector)
-    standlone()
-    dev_reoient()
+    standalone()
+    # dev_reload()
+    dev_build_node_slot()
+    # dev_reload()

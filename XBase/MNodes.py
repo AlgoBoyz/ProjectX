@@ -1,12 +1,11 @@
 import pdb
 
 import maya.cmds as mc
-from .MConstant import Sign
+from .MConstant import Sign, AttrType
 from .MBaseFunctions import get_list_types
 
 
-class MNode(object):
-    _CREATE_STR = 'MNodeBase'
+class VitualNode(object):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership',
                  'hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
                  'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
@@ -136,6 +135,10 @@ class MNode(object):
                  'outputScaleZ', 'outputShear', 'outputShearX', 'outputShearY', 'outputShearZ', 'outputQuat',
                  'outputQuatX', 'outputQuatY', 'outputQuatZ', 'outputQuatW']
 
+
+class MNode(VitualNode):
+    _CREATE_STR = 'MNodeBase'
+
     def __init__(self, name):
         if name is None:
             raise RuntimeError(f'Can not initialize from None')
@@ -229,13 +232,14 @@ class MNode(object):
 
 
 class MAttribute(object):
-    VALUE_ACCURACY = 5  # 小数点后几位
+    VALUE_ACCURACY = 5  # 数值精确到小数点后几位
 
     def __init__(self, node, attr_name):
         self.node = node
         self.attr_name = attr_name
         self.full_name = f'{self.node}.{self.attr_name}'
         self.__check_exist()
+        self.attr_type = mc.getAttr(self.full_name, type=True)
 
     def __repr__(self):
         return f'MAttribue: {self.full_name}'
@@ -293,16 +297,14 @@ class MAttribute(object):
         else:
             return None
 
-    @property
-    def attr_type(self):
-        t = mc.getAttr(self.full_name, type=True)
-        # print(f'{self.full_name}--Attribute type:{t}')
-        return t
-
-    def connect(self, other, force=False):
+    def connect(self, other, force=False, compund=False) -> 'MNode':
         other_node = ''
         if isinstance(other, str):
-            node, attr = self.validate_attr(other)
+            if compund:
+                node = other.split('.')[0]
+                attr = other.split('.', 1)[1]
+            else:
+                node, attr = self.validate_attr(other)
             other_node = node
             mc.connectAttr(self.full_name, other, force=force)
             print(f'{self.full_name}>>{other}')
@@ -318,7 +320,7 @@ class MAttribute(object):
                 self.connect(attr, force=force)
         else:
             raise RuntimeError(f'Not supported attibute to connect')
-        return other_node
+        return MNode(other_node)
 
     def disconnect(self):
         pass
@@ -343,3 +345,23 @@ class MAttribute(object):
             return mc.getAttr(self.full_name)
         else:
             return self.value
+
+    def add(self, other, alias):
+        if isinstance(other, str) and mc.objExists(other):
+            node_name = other.split('.', 1)[0]
+            attr_name = other.split('.', 1)[1]
+            other = MAttribute(node_name, attr_name)
+        from XBase.MMathNode import addDoubleLinear, colorMath
+        if self.attr_type in AttrType.ValueType:
+            add_node = addDoubleLinear.create(f'{alias}_adl')
+            self.connect(add_node.input1)
+            other.connect(add_node.input2)
+
+        elif self.attr_type in AttrType.CompundType:
+            add_node = colorMath.create(f'{alias}')
+            add_node.operation.set(0)
+            self.connect(add_node.colorA)
+            other.connect(add_node.colorB)
+        else:
+            raise RuntimeError(f'Operation add do not support attibute type of :{self.attr_type}')
+        return add_node
