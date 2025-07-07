@@ -1,10 +1,11 @@
 from typing import Union, Optional
 
-from libfuturize.fixer_util import is_import_stmt
+import maya.cmds as mc
 
 from XBase import *
 from XBase import MTransform as mt
 from XBase.MConstant import AttrType, XSpace
+from XBase.MTransform import MTripleJointChain
 
 
 class Component(object):
@@ -34,12 +35,12 @@ class IKComponentConfig(object):
 class IKComponent(MJointBaseComponent):
 
     def __init__(self, alias, joint_chain: Union['mt.MTripleJointChain', list[str]], config=IKComponentConfig()):
-        super().__init__(joint_chain, config)
+        super().__init__(alias, joint_chain, config)
         self.alias = alias
         if isinstance(joint_chain, mt.MTripleJointChain):
             self.joint_chain = joint_chain
-        elif isinstance(joint_chain, list):
-            self.joint_chain = joint_chain
+        elif isinstance(joint_chain, list) and len(joint_chain) == 3:
+            self.joint_chain = MTripleJointChain(joint_chain)
         self._to_clean = []
         self.clean()
 
@@ -57,9 +58,17 @@ class IKComponent(MJointBaseComponent):
         jnt = mt.MJoint.create('test')
         tr = mt.MTransform.create('test_t')
 
+    def _create_ik(self):
+        self.ik_handle, self.ik_effector = mc.ikHandle(startJoint=self.joint_chain[0].name,
+                                                       endEffector=self.joint_chain[-1].name)
+
+
     def clean(self):
         print(self._to_clean)
         mt.MTransform.set_root_space('')
+
+    def post_build(self, func):
+        func()
 
 
 class FKComponent(MJointBaseComponent):

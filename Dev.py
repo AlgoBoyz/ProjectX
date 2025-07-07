@@ -70,8 +70,8 @@ def dev():
 
 def dev_attribute():
     from XBase import MTransform as mt
-    jc = mt.MJointChain.create(['jnt1', 'jnt2'])
-    jc[0].t.add(jc[1].t, 'test')
+    jc = mt.MTransform.create('test')
+    print(jc.translate[0])
 
 
 def dev_print():
@@ -211,6 +211,7 @@ def dev_build_node_slot():
     attrs = BuildNodeCache.build_math_node_cache()
     print(attrs)
 
+
 def dev_skirt():
     from XBase import MTransform as mt
     from XBase.MMathNode import colorMath, dotProduct, setRange, remapValue
@@ -297,9 +298,20 @@ def dev_skirt():
         leg_jc[0].attr('param1').connect(f'{rot_remap.name}.value[0].value_Position', compund=True)
 
 
+def dev_triple_jc():
+    from XBase.MTransform import MTripleJointChain, MTransform
+    sel = mc.ls(selection=True)
+    jc = MTripleJointChain.create(sel)
+    # jc[0].rotateY.set(30)
+    # jc[1].translateX.set(5)
+    # jc[1].rotateY.set(-60)
+    # jc[2].translateX.set(5)
+    loc = MTransform.create(posisition=jc.get_pole_vec_pos())
+    loc.match(jc[1].name, rotation=True)
+
+
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    # dev_reload()
-    dev_build_node_slot()
-    # dev_reload()
+    dev_reload()
+    dev_triple_jc()

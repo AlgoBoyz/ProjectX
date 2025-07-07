@@ -185,7 +185,7 @@ class MJoint(MTransform):
     def create(cls, name=None, **kwargs) -> 'MJoint':
         instance = super().create(name, **kwargs)
 
-        return cls(instance)
+        return cls(instance.name)
 
     @property
     def joint_data(self):
@@ -222,7 +222,7 @@ class MTransformList(object):
         self.nodes = []
         self.positions = []
         self._init_node_list()
-        self.length = len(self.node_names)
+        self.len = len(self.node_names)
 
     def __getitem__(self, idx) -> MTransform:
         return self.nodes[idx]
@@ -231,7 +231,7 @@ class MTransformList(object):
         return iter(self.nodes)
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.length}):{self.node_names}'
+        return f'{self.__class__.__name__}({self.len}):{self.node_names}'
 
     def _init_node_list(self):
         lst_types = mb.get_list_types(self.node_names)
@@ -277,6 +277,11 @@ class MJointSet(MTransformList):
     def __init__(self, joints: list):
         super().__init__(joints)
 
+    @classmethod
+    def create(cls, joints: list[str]) -> 'MJointSet':
+        instance = super().create(joints)
+        return cls(instance.node_names)
+
     def __getitem__(self, idx) -> Union[MJoint, 'MJointSet']:
         if isinstance(idx, slice):
             return MJointSet(self.nodes[idx])
@@ -299,7 +304,7 @@ class MJointChain(MJointSet):
             return MJoint(self.nodes[idx])
 
     @classmethod
-    def create(cls, joints: list[str]):
+    def create(cls, joints: list[str]) -> 'MJointChain':
         instance = super().create(joints)
         instance.parent_all()
         return cls(instance.node_names)
@@ -392,29 +397,49 @@ class MTripleJointChain(MJointChain):
         else:
             return MJoint(self.nodes[idx])
 
+    @classmethod
+    def create(cls, joints: list[str]) -> 'MTripleJointChain':
+        if not len(joints) == 3:
+            raise RuntimeError(f'Can not initialize MTripleJointChain from {joints} due to length of joints is not 3')
+        instance = super().create(joints)
+        return cls(joints)
+
     @property
     def vec_ab(self):
-        pass
+        vec_ab = self[1].world_pos - self[0].world_pos
+        return vec_ab
 
     @property
     def vec_ac(self):
-        pass
+        vec_ac = self[2].world_pos - self[0].world_pos
+        return vec_ac
 
     @property
     def vec_bc(self):
-        pass
+        vec_bc = self[2].world_pos - self[1].world_pos
+        return vec_bc
 
     @property
-    def pole_vec_pos(self):
-        pass
+    def pv_vec(self):
+        '''
+        a*b = |a|*|b|*cos
+        --> a*b/|b| = |a|*cos
+        --> 点乘结果除以b的模长等于a在b上的投影长度，再除以b的模长，等于投影在b上占的比例
+        :return:
+        '''
+
+        factor = (self.vec_ab * self.vec_ac) / self.vec_ac.length() ** 2
+        vec_db = self.vec_ab - self.vec_ac * factor
+
+        return vec_db
 
     @property
     def normal(self):
         pass
 
-    @property
-    def length(self):
-        pass
+    def get_pole_vec_pos(self, multiplier=2):
+        pv_pos = self[1].world_pos + self.pv_vec * multiplier
+        return pv_pos
 
 
 class MQuadJointChain(MJointChain):
