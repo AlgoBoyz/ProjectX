@@ -175,6 +175,7 @@ class MLocator(MTransform):
 
     def __init__(self, name):
         super().__init__(name)
+        self.shape = ''
 
 
 class MJoint(MTransform):
