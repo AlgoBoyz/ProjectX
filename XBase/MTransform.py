@@ -1,12 +1,14 @@
-from typing import Iterator, Union
+from typing import Iterator, Union, Optional
 
 from maya.OpenMaya import MVector
 
 import maya.api.OpenMaya as om
 import maya.cmds as mc
 
-from . import MBaseFunctions as mb
-from . import MNodes
+from XBase import MBaseFunctions as mb
+from XBase import MNodes
+from XBase.MShape import MLocatorShape
+from maya.app.type.legacy.arabicConvert import inMergeRange
 from .MConstant import XSpace, WorldUpType, Axis, Matrix
 
 
@@ -95,7 +97,11 @@ class MTransform(MNodes.MNode):
         return constraint_node
 
     def insert_parent(self, name):
-        pass
+        pre_parent = self.parent
+        instance = MTransform.create(name=name, match=self)
+        self.set_parent(instance)
+        instance.set_parent(pre_parent)
+        return instance
 
     def unparent(self):
         pass
@@ -173,9 +179,29 @@ class MLocator(MTransform):
     _CREATE_STR = 'locator'
     root_space = XSpace.locator_root
 
-    def __init__(self, name):
+    def __init__(self, name, shape):
         super().__init__(name)
-        self.shape = ''
+        self.shape = MLocatorShape(shape)
+
+    @classmethod
+    def create(cls, name=None, **kwargs) -> 'MLocator':
+        if name is None:
+            name = cls._CREATE_STR
+        shape = mc.createNode('locator', name=f'{name}Shape')
+        transform = mc.listRelatives(shape, parent=True)[0]
+        instance = cls(transform, shape)
+        instance.rename(name)
+        parent = kwargs.pop('parent', '')
+        if parent:
+            instance.set_parent(MTransform(parent))
+        match = kwargs.pop('match', '')
+        if match:
+            instance.match(MTransform(match))
+        match_parent = kwargs.pop('match_parent', '')
+        if match_parent:
+            instance.set_parent(match_parent)
+            instance.match(MTransform(match_parent))
+        return instance
 
 
 class MJoint(MTransform):

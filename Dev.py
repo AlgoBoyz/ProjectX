@@ -3,9 +3,6 @@ import os.path
 import sys
 
 from maya.OpenMaya import MVector
-from mypyc.primitives.misc_ops import type_op
-
-from maya.cmds import polyPlane
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
@@ -310,8 +307,102 @@ def dev_triple_jc():
     loc.match(jc[1].name, rotation=True)
 
 
+def dev_create_psd_locs():
+    # dev_reset_scene()
+    # path = r'F:\作品集\Rig\Girl\test_adv_scene.mb'
+    # mc.file(path, i=True)
+    import XBase.MTransform as mt
+    from XBase.MMathNode import vectorProduct
+    jnt_names = ['Shoulder', 'Elbow', 'Wrist', 'Hip', 'Knee']
+    dot_value_collect_node = mt.MTransform.create('dot_value_collect')
+    for side in ['L', 'R']:
+        factor = 1 if side == 'R' else -1
+        for jnt in jnt_names:
+            jnt_name = f'{jnt}_{side}'
+            jnt_node = mt.MTransform(jnt_name)
+
+            root_space_grp = mt.MTransform.create(f'{jnt_name}_Root_Space', under=jnt_node.parent)
+            root_space_grp.match(jnt_node)
+
+            origin_loc = mt.MLocator.create(f'{jnt_name}_Origin_Loc', parent=root_space_grp, match=jnt_name)
+            # vector
+            move_loc = mt.MLocator.create(f'{jnt_name}_Move_Loc', match_parent=jnt_node)
+            move_loc.tx.set(factor * 100.0)
+            move_vec = move_loc.shape.worldPosition.substract(origin_loc.shape.worldPosition, 'test')
+
+            for axis in ['y', 'z']:
+                for i in [1, -1]:
+                    for angle in [90.0]:
+                        sign = 'P' if i == 1 else 'N'
+                        origin_tip_loc = mt.MLocator.create(f'{jnt_name}_OriginTip{sign}{axis.capitalize()}{angle}_Loc',
+                                                            match_parent=root_space_grp
+                                                            )
+
+                        par = origin_tip_loc.insert_parent(f'{origin_tip_loc.name}_Offset')
+                        par.attr(f'r{axis}').set(i * angle)
+
+                        origin_tip_loc.tx.set(factor * 100.0)
+                        axis_vec = origin_tip_loc.shape.worldPosition.substract(origin_loc.shape.worldPosition, 'test')
+                        cos = MVector(*move_vec.outColor.value).normal() * MVector(*axis_vec.outColor.value).normal()
+                        dot = vectorProduct.create(f'{origin_tip_loc}_dot')
+                        dot.dot(move_vec, axis_vec)
+
+                        dot_value_collect_node.add_attr(attr_name=f'{origin_tip_loc}_dot_value', at='float', k=True)
+                        dot_value_collect_node.add_attr(attr_name=f'{origin_tip_loc}_cos', at='float', k=True)
+                        dot.outputX.connect(dot_value_collect_node.attr(f'{origin_tip_loc}_dot_value'))
+                        dot_value_collect_node.attr(f'{origin_tip_loc}_cos').set(cos)
+
+
+def dev_MShape():
+    from XBase import MTransform as mt
+    from XBase.MShape import MLocatorShape
+    loc = mt.MLocator.create(name='test')
+    print(loc.shape.worldPosition)
+
+
+def dev_rename():
+    import maya.cmds as mc
+    sel = mc.ls(selection=True, long=True)
+    alias = 'LF_Sleeve_01'
+    for i, jnt in enumerate(sel):
+        print(i)
+        mc.rename(jnt, f'{alias}_{i + 1:02d}_Jnt')
+
+
+def dev_redirect_sdk():
+    from XBase import MTransform as mt
+    driver_attr = 'dot_value_collect.Hip_L_OriginTipPZ90_0_Loc_dot_value'
+    driver_value = mc.getAttr(driver_attr)
+    grp_suffix = f'test_grp'
+    sel = mc.ls(selection=True)
+    for i, node in enumerate(sel):
+        mt_node = mt.MTransform(node)
+        driven_grp = mt.MTransform.create(f'{node}_PRZ90', match=mt_node)
+        driven_grp.set_parent(mt_node.parent)
+        mt_node.set_parent(driven_grp)
+        for axis in ['X', 'Y', 'Z']:
+            for t in ['translate', 'rotate', 'scale']:
+                attr = f'{driven_grp.name}.{t}{axis}'
+                attr_defalut_value = mc.attributeQuery(f'{t}{axis}', node=driven_grp.name, listDefault=True)[0]
+                attr_value = mc.getAttr(attr)
+                print(attr_value, attr_defalut_value)
+                # if attr_value - attr_defalut_value < 0.0001:
+                #     continue
+                mc.setDrivenKeyframe(attr,
+                                     currentDriver=driver_attr,
+                                     driverValue=0,
+                                     value=attr_defalut_value,
+                                     outTangentType='linear')
+                mc.setDrivenKeyframe(attr,
+                                     currentDriver=driver_attr,
+                                     driverValue=driver_value,
+                                     value=attr_value,
+                                     outTangentType='linear'
+                                     )
+
+
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_reload()
-    dev_triple_jc()
+    # dev_reload()
+    dev_create_psd_locs()

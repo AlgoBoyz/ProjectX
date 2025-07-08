@@ -105,6 +105,11 @@ def normalize_vector(vector):
     return [round(i, 5) for i in [x / norm for x in vector]]
 
 
+def increase_save():
+    file = mc.file(absoluteName=True)
+    print(file)
+
+
 class StrUtils(object):
 
     def __init__(self, string: str):

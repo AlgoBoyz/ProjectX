@@ -1,3 +1,4 @@
+import pdb
 from imp import reload
 
 import sys
@@ -24,6 +25,7 @@ class VitualMathNode(object):
 
 
 class MathNode(VitualMathNode):
+    _CREATE_STR = 'VitualMathNode'
 
     def __init__(self, name):
         if name is None:
@@ -91,7 +93,6 @@ class multDoubleLinear(MathNode):
 
     def __init__(self, name):
         super().__init__(name)
-        self.sss = ''
 
 
 class multiplyDivide(MathNode):
@@ -145,6 +146,22 @@ class dotProduct(MathNode):
         super().__init__(name)
 
 
+class vectorProduct(MathNode):
+    _CREATE_STR = 'vectorProduct'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+    def dot(self, other1, other2):
+        self.operation.set(1)
+        normal_node1 = normalize.create(f'{other1.name}_normalize')
+        normal_node2 = normalize.create(f'{other2.name}_normalize')
+        other1.outColor.connect(normal_node1.input)
+        other2.outColor.connect(normal_node2.input)
+        normal_node1.output.connect(self.input1)
+        normal_node2.output.connect(self.input2)
+
+
 class setRange(MathNode):
     _CREATE_STR = 'setRange'
 
@@ -154,6 +171,13 @@ class setRange(MathNode):
 
 class remapValue(MathNode):
     _CREATE_STR = 'remapValue'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class normalize(MathNode):
+    _CREATE_STR = 'normalize'
 
     def __init__(self, name):
         super().__init__(name)

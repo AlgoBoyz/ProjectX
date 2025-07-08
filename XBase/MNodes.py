@@ -1,7 +1,7 @@
 import pdb
 
 import maya.cmds as mc
-from .MConstant import Sign, AttrType
+from XBase.MConstant import Sign, AttrType
 from .MBaseFunctions import get_list_types
 
 
@@ -183,7 +183,7 @@ class MNode(VitualNode):
             elif isinstance(under, cls):
                 mc.parent(node, under.name)
         if match:
-            pass
+            mc.matchTransform(node, match)
         if pos:
             mc.xform(node, worldSpace=True, translation=pos)
         return cls(node)
@@ -226,6 +226,7 @@ class MNode(VitualNode):
         pass
 
     def rename(self, new_name):
+
         mc.rename(self.name, new_name)
 
     def attr(self, item):
