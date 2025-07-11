@@ -228,6 +228,7 @@ class MNode(VitualNode):
     def rename(self, new_name):
 
         mc.rename(self.name, new_name)
+        self.name = new_name
 
     def attr(self, item):
 

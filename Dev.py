@@ -308,9 +308,9 @@ def dev_triple_jc():
 
 
 def dev_create_psd_locs():
-    # dev_reset_scene()
-    # path = r'F:\作品集\Rig\Girl\test_adv_scene.mb'
-    # mc.file(path, i=True)
+    dev_reset_scene()
+    path = r'F:\作品集\Rig\Girl\test_adv_scene.mb'
+    mc.file(path, i=True)
     import XBase.MTransform as mt
     from XBase.MMathNode import vectorProduct
     jnt_names = ['Shoulder', 'Elbow', 'Wrist', 'Hip', 'Knee']
@@ -332,7 +332,7 @@ def dev_create_psd_locs():
 
             for axis in ['y', 'z']:
                 for i in [1, -1]:
-                    for angle in [90.0]:
+                    for angle in [90]:
                         sign = 'P' if i == 1 else 'N'
                         origin_tip_loc = mt.MLocator.create(f'{jnt_name}_OriginTip{sign}{axis.capitalize()}{angle}_Loc',
                                                             match_parent=root_space_grp
@@ -371,38 +371,102 @@ def dev_rename():
 
 def dev_redirect_sdk():
     from XBase import MTransform as mt
-    driver_attr = 'dot_value_collect.Hip_L_OriginTipPZ90_0_Loc_dot_value'
+    driver_attr = 'dot_value_collect.Hip_L_OriginTipNZ90_0_Loc_dot_value'
     driver_value = mc.getAttr(driver_attr)
     grp_suffix = f'test_grp'
     sel = mc.ls(selection=True)
     for i, node in enumerate(sel):
         mt_node = mt.MTransform(node)
-        driven_grp = mt.MTransform.create(f'{node}_PRZ90', match=mt_node)
+        driven_grp = mt.MTransform.create(f'{node}_NRZ90', match=mt_node)
         driven_grp.set_parent(mt_node.parent)
         mt_node.set_parent(driven_grp)
-        for axis in ['X', 'Y', 'Z']:
-            for t in ['translate', 'rotate', 'scale']:
+        for axis in ['x', 'y', 'z']:
+            for t in ['t', 'r', 's']:
                 attr = f'{driven_grp.name}.{t}{axis}'
                 attr_defalut_value = mc.attributeQuery(f'{t}{axis}', node=driven_grp.name, listDefault=True)[0]
                 attr_value = mc.getAttr(attr)
-                print(attr_value, attr_defalut_value)
+                print(attr, attr_value, attr_defalut_value)
                 # if attr_value - attr_defalut_value < 0.0001:
                 #     continue
                 mc.setDrivenKeyframe(attr,
                                      currentDriver=driver_attr,
                                      driverValue=0,
                                      value=attr_defalut_value,
+                                     inTangentType='linear',
                                      outTangentType='linear')
                 mc.setDrivenKeyframe(attr,
                                      currentDriver=driver_attr,
                                      driverValue=driver_value,
                                      value=attr_value,
+                                     inTangentType='linear',
                                      outTangentType='linear'
                                      )
+        mt_node.t.set([0, 0, 0])
+        mt_node.r.set([0, 0, 0])
+        mt_node.jointOrient.set([0, 0, 0])
+
+
+def dev_add_mirror_joint_to_cluster():
+    from XBase import MBaseFunctions
+    infs = MBaseFunctions.get_mesh_infs(mc.ls(selection=True)[0])
+    # LF_Joints = [i for i in infs if 'LF' in i]
+    # RT_Joints = [i.replace('LF', 'RT') for i in LF_Joints]
+    # sc = MBaseFunctions.get_skin_cluster(mc.ls(selection=True)[0])
+    # for jnt in RT_Joints:
+    #     if jnt in infs:
+    #         continue
+    #     if mc.objExists(jnt):
+    #         mc.skinCluster(sc, e=True, addInfluence=jnt, weight=0.0)
+    #         print(f'Add {jnt} to {sc}')
+    #     else:
+    #         print(f'{jnt} do not exist!')
+
+    for i in infs:
+        print(i)
+    print(len(infs))
+
+
+def create_ctrl_for_jnts():
+    from XBase import MTransform as mt
+    sel = mc.ls(selection=True)
+    for jnt in sel:
+        jnt_mt = mt.MTransform(jnt)
+        if jnt_mt.children is None:
+            continue
+        ctrl = mc.duplicate('Cube_Prototype')[0]
+        ctrl_mt = mt.MTransform(ctrl)
+        ctrl_mt.rename(f'{jnt}_Ctrl')
+        ctrl_mt.match(jnt_mt)
+        ctrl_mt.set_parent(jnt_mt.parent)
+        jnt_mt.set_parent(ctrl_mt)
+        ctrl_mt.insert_parent(f'{ctrl_mt.name}_Grp')
+        ctrl_mt.insert_parent(f'{ctrl_mt.name}_Offset')
+
+
+def dev_set_color(shapes=None):
+    color = [0, 1, 0]
+    from XBase import MTransform as mt
+    sel = mc.ls(selection=True)
+    if shapes is None:
+        shapes = sel
+    for node in shapes:
+        node_mt = mt.MTransform(node)
+        node_mt.overrideEnabled.set(1)
+        node_mt.overrideRGBColors.set(1)
+        node_mt.overrideColorRGB.set(color)
+
+
+def dev_symetry_loc_on_select():
+    from XBase import MTransform as mt
+    sel = mc.ls(selection=True)[0] or None
+    if sel is None:
+        raise RuntimeError(f'Select a node')
+    loc = mt.MLocator.create(match=sel)
+    loc.tx.set(loc.tx.value * -1)
 
 
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
     # dev_reload()
-    dev_create_psd_locs()
+    dev_add_mirror_joint_to_cluster()

@@ -110,6 +110,38 @@ def increase_save():
     print(file)
 
 
+def transfer_influences():
+    sel = mc.ls(selection=True)
+    if not sel:
+        raise RuntimeError(f'Select source mesh and target mesh to transfer influences')
+    source_mesh = sel[0]
+    target_meshes = sel[1:]
+    infs_source = get_mesh_infs(source_mesh)
+    for target in target_meshes:
+        target_skin_cluster = get_skin_cluster(target)
+        target_infs = get_mesh_infs(target)
+        for inf in infs_source:
+            if inf in target_infs:
+                continue
+            mc.skinCluster(target_skin_cluster, addInfluence=inf, weight=0.0, e=True)
+            print(f'Adding influence:{inf} to {target_skin_cluster}')
+
+
+def get_mesh_infs(mesh):
+    skin_cluster = [i for i in mc.listHistory(mesh) if mc.objectType(i) == 'skinCluster'][0] or None
+    if skin_cluster is None:
+        raise RuntimeError(f'Source mesh:{mesh} has not skin cluster node')
+    infs = [i for i in mc.listHistory(skin_cluster) if mc.objectType(i) == 'joint']
+    if not infs:
+        raise RuntimeError(f'Skin cluster :{skin_cluster} has not infs')
+    return infs
+
+
+def get_skin_cluster(mesh):
+    return [i for i in mc.listHistory(mesh) if mc.objectType(i) == 'skinCluster'][0] or None
+
+
+
 class StrUtils(object):
 
     def __init__(self, string: str):
