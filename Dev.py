@@ -465,6 +465,104 @@ def dev_symetry_loc_on_select():
     loc.tx.set(loc.tx.value * -1)
 
 
+def dev_extarct_bind_joints():
+    from XBase import MTransform as mt
+    sc = mc.ls(type='skinCluster')
+    bind_infs = []
+    print(bind_infs)
+    for skin in sc:
+        infs = [i for i in mc.listHistory(skin) if mc.objectType(i) == 'joint']
+        for inf in infs:
+            if inf in bind_infs:
+                continue
+            bind_infs.append(inf)
+    jnt_data = []
+    for jnt in bind_infs:
+        world_mat = mc.getAttr(f'{jnt}.worldMatrix')
+        parent = mc.listRelatives(jnt, parent=True)
+        while not mc.objectType(parent) == 'joint':
+            parent = mc.listRelatives(parent, parent=True)
+            if parent is None:
+                parent = None
+                break
+        jnt_data.append([world_mat, parent])
+    out_jnts = []
+    for jnt, data in zip(bind_infs, jnt_data):
+        new_jnt = mc.createNode('joint', name=f'{jnt}_output')
+        mc.xform(new_jnt, worldSpace=True, matrix=data[0])
+        out_jnts.append(new_jnt)
+
+    for i, jnt in enumerate(out_jnts):
+        if jnt_data[i][1] is None:
+            continue
+        mc.parent(jnt, f'{jnt_data[i][1][0]}_output')
+    for i, jnt in enumerate(out_jnts):
+        jnt_mt = mt.MTransform(jnt)
+        jnt_mt.freeze()
+
+
+def dev_rebuild_constraint():
+    from XBase import MTransform as mt
+    sel = mc.ls(selection=True)
+    for jnt in mc.listRelatives(sel, allDescendents=True, children=True):
+        # jnt_mt = mt.MTransform(jnt)
+        # jnt_mt.freeze()
+        origin = jnt.replace('_output', '')
+        mc.parentConstraint(origin, jnt)
+
+
+def dev_redirect_sc():
+    sc = mc.ls(type='skinCluster')
+    bind_infs = []
+    for skin in sc:
+        infs = [i for i in mc.listHistory(skin) if mc.objectType(i) == 'joint']
+        for inf in infs:
+            if inf in bind_infs:
+                continue
+            bind_infs.append(inf)
+
+    for jnt in bind_infs:
+        attrs = [i for i in mc.listConnections(jnt, destination=True, source=True, plugs=True) if
+                 'bindPose' in i or '_sc' in i]
+        output_jnt = f'{jnt}_output'
+        data = []
+        for attr in attrs:
+            source_attr = mc.listConnections(attr, source=True, plugs=True)[0]
+            output_jnt_attr = source_attr.replace(jnt, output_jnt)
+            data.append([output_jnt_attr, attr])
+        for a1, a2 in data:
+            try:
+                mc.connectAttr(a1, a2, force=True)
+            except:
+                print(a1, a2)
+
+
+def dev_create_pivot_follicle():
+    import XBase.MTransform as mt
+    import XBase.MNodes as mn
+    sel = mc.ls(selection=True)
+    geo = 'F01_MacheLotus01_Hat_HDShape'
+    for grp in sel:
+        cpom = mn.MNode(mc.createNode('closestPointOnMesh', name=f'{grp}_cpom'))
+        loc = mt.MLocator.create(f'{grp}_Loc')
+        loc.match(grp)
+        loc.shape.worldPosition.connect(cpom.inPosition)
+        mc.connectAttr(f'{geo}.outMesh', f'{cpom.name}.inMesh')
+        u = cpom.parameterU.value
+        v = cpom.parameterV.value
+
+        fol = mc.createNode('follicle', name=f'{grp}_folShape')
+        print(fol)
+        fol_trans = mc.listRelatives(fol, parent=True)[0]
+        mc.rename(fol_trans, f'{grp}_fol')
+        mc.connectAttr(f'{fol}.outTranslate', f'{fol_trans}.translate')
+        mc.connectAttr(f'{geo}.outMesh', f'{fol}.inputMesh')
+        mc.connectAttr(f'{geo}.worldMatrix', f'{fol}.inputWorldMatrix')
+
+        mc.setAttr(f'{fol}.parameterU', u)
+        mc.setAttr(f'{fol}.parameterV', v)
+
+
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
