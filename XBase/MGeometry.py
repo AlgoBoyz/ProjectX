@@ -32,7 +32,6 @@ class MMesh(MShape):
 
     def __init__(self, shape_node):
         super().__init__(shape_node)
-        self.constrcuter = self.polyPlane('')
 
     @classmethod
     def create(cls, name=None, **kwargs):
@@ -41,14 +40,12 @@ class MMesh(MShape):
         node = mc.polyPlane(name=name)[1]
         return cls(node)
 
-    class polyPlane(MNode):
-        __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'output', 'axis',
-                     'axisX', 'axisY', 'axisZ', 'heightBaseline', 'paramWarn', 'uvSetName', 'componentTagCreate',
-                     'componentTagPrefix', 'componentTagSuffix', 'width', 'height', 'subdivisionsWidth',
-                     'subdivisionsHeight', 'texture', 'createUVs']
+    def export_weight(self):
+        pass
 
-        def __init__(self, name):
-            super().__init__(name)
+    @property
+    def vert_num(self):
+        return om.MFnMesh(self.dp_node).numVertices
 
 
 class MCurve(MShape):

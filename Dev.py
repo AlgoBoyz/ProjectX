@@ -1,8 +1,7 @@
 from importlib import reload
 import os.path
 import sys
-
-from maya.OpenMaya import MVector
+from xml.sax.saxutils import XMLFilterBase
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
@@ -10,8 +9,6 @@ import maya.api.OpenMaya as om
 import XUI.XMainWindow
 
 import datetime
-
-print(datetime.datetime.today())
 
 
 def standalone():
@@ -92,12 +89,13 @@ def dev_math():
 
 
 def dev_ui():
-    from PySide6 import QtWidgets
-    for widget in QtWidgets.QApplication.topLevelWidgets():
-        if widget.windowTitle() == 'XRig':
-            widget.deleteLater()
-    main_ui = XUI.XMainWindow.XRigMainWindow()
-    main_ui.show()
+    # from PySide6 import QtWidgets
+    # for widget in QtWidgets.QApplication.topLevelWidgets():
+    #     if widget.windowTitle() == 'XRig':
+    #         widget.deleteLater()
+    # main_ui = XUI.XMainWindow.XRigMainWindow()
+    # main_ui.show()
+    pass
 
 
 def dev_component():
@@ -121,19 +119,16 @@ def dev_save_data():
     standalone()
     mesh, jnts = dev_create_skined_mesh()
     from XBase import MGeometry
-    from XBase.MData import MCurveData, MWeightData, MSkinCluster
-    weight = MSkinCluster.get_skin_cluster_from_node(mesh).collect_weight_data()
+    from XBase.MData import MCurveData, MWeightData
+    # weight = MSkinCluster.get_skin_cluster_from_node(mesh).collect_weight_data()
     # file_path = os.path.join(MCurveData.DATA_DIR,'nurbsCircleShape1.json')
     # data = MCurveData.load_from_file(file_path)
     # print(data)
 
 
 def dev_geo():
-    from XBase.MData import MCurveData
-    from XBase import MGeometry
-    data = MCurveData.load_from_file(r'F:\Code\Python\ProjectX\res\GeoData\NurbsCurve\nurbsCircleShape1.json')
-    curve = MGeometry.MCurve.create(name='test', curve_data=data)
-    curve.curve_data.calculate_up_axis()
+    from XTools import XWeightTool
+    XWeightTool.WeightDataCollector()
 
 
 def dev_generate_node_slot():
@@ -308,13 +303,13 @@ def dev_triple_jc():
 
 
 def dev_create_psd_locs():
-    dev_reset_scene()
-    path = r'F:\作品集\Rig\Girl\test_adv_scene.mb'
-    mc.file(path, i=True)
+    # dev_reset_scene()
+    # path = r'F:\作品集\Rig\Girl\test_adv_scene.mb'
+    # mc.file(path, i=True)
     import XBase.MTransform as mt
     from XBase.MMathNode import vectorProduct
-    jnt_names = ['Shoulder', 'Elbow', 'Wrist', 'Hip', 'Knee']
-    dot_value_collect_node = mt.MTransform.create('dot_value_collect')
+    jnt_names = ['Ankle']
+    dot_value_collect_node = mt.MTransform('dot_value_collect')
     for side in ['L', 'R']:
         factor = 1 if side == 'R' else -1
         for jnt in jnt_names:
@@ -343,7 +338,8 @@ def dev_create_psd_locs():
 
                         origin_tip_loc.tx.set(factor * 100.0)
                         axis_vec = origin_tip_loc.shape.worldPosition.substract(origin_loc.shape.worldPosition, 'test')
-                        cos = MVector(*move_vec.outColor.value).normal() * MVector(*axis_vec.outColor.value).normal()
+                        cos = om.MVector(*move_vec.outColor.value).normal() * om.MVector(
+                            *axis_vec.outColor.value).normal()
                         dot = vectorProduct.create(f'{origin_tip_loc}_dot')
                         dot.dot(move_vec, axis_vec)
 
@@ -371,7 +367,7 @@ def dev_rename():
 
 def dev_redirect_sdk():
     from XBase import MTransform as mt
-    driver_attr = 'dot_value_collect.Hip_L_OriginTipNZ90_0_Loc_dot_value'
+    driver_attr = 'dot_value_collect.Shoulder_R_OriginTipNZ90_0_Loc_dot_value'
     driver_value = mc.getAttr(driver_attr)
     grp_suffix = f'test_grp'
     sel = mc.ls(selection=True)
@@ -444,7 +440,7 @@ def create_ctrl_for_jnts():
 
 
 def dev_set_color(shapes=None):
-    color = [0, 1, 0]
+    color = [0, 0, 1]
     from XBase import MTransform as mt
     sel = mc.ls(selection=True)
     if shapes is None:
@@ -496,7 +492,6 @@ def dev_extarct_bind_joints():
         if jnt_data[i][1] is None:
             continue
         mc.parent(jnt, f'{jnt_data[i][1][0]}_output')
-    for i, jnt in enumerate(out_jnts):
         jnt_mt = mt.MTransform(jnt)
         jnt_mt.freeze()
 
@@ -520,10 +515,12 @@ def dev_redirect_sc():
             if inf in bind_infs:
                 continue
             bind_infs.append(inf)
-
     for jnt in bind_infs:
+
         attrs = [i for i in mc.listConnections(jnt, destination=True, source=True, plugs=True) if
                  'bindPose' in i or '_sc' in i]
+        print(jnt)
+        print(attrs)
         output_jnt = f'{jnt}_output'
         data = []
         for attr in attrs:
@@ -541,30 +538,70 @@ def dev_create_pivot_follicle():
     import XBase.MTransform as mt
     import XBase.MNodes as mn
     sel = mc.ls(selection=True)
-    geo = 'F01_MacheLotus01_Hat_HDShape'
     for grp in sel:
-        cpom = mn.MNode(mc.createNode('closestPointOnMesh', name=f'{grp}_cpom'))
-        loc = mt.MLocator.create(f'{grp}_Loc')
-        loc.match(grp)
-        loc.shape.worldPosition.connect(cpom.inPosition)
-        mc.connectAttr(f'{geo}.outMesh', f'{cpom.name}.inMesh')
-        u = cpom.parameterU.value
-        v = cpom.parameterV.value
-
+        u = 0.5
+        v = 0.5
+        np = mc.nurbsPlane(width=0.5, degree=2)
+        np_mt = mt.MTransform(np[0])
+        np_mt.rename(f'{grp}_Surface')
+        np_mt.match(grp)
+        np_shape = np_mt.child
         fol = mc.createNode('follicle', name=f'{grp}_folShape')
         print(fol)
+        mc.connectAttr(f'{np_shape.name}.local', f'{fol}.inputSurface')
+        mc.connectAttr(f'{np_shape}.worldMatrix', f'{fol}.inputWorldMatrix')
         fol_trans = mc.listRelatives(fol, parent=True)[0]
         mc.rename(fol_trans, f'{grp}_fol')
         mc.connectAttr(f'{fol}.outTranslate', f'{fol_trans}.translate')
-        mc.connectAttr(f'{geo}.outMesh', f'{fol}.inputMesh')
-        mc.connectAttr(f'{geo}.worldMatrix', f'{fol}.inputWorldMatrix')
 
         mc.setAttr(f'{fol}.parameterU', u)
         mc.setAttr(f'{fol}.parameterV', v)
 
 
+def dev_create_tip():
+    from XBase import MTransform as mt
+    sel = mc.ls(selection=True)
+    for jnt in sel:
+        child = mc.listRelatives(jnt, children=True, allDescendents=True)[0]
+
+        child_mt = mt.MTransform(child)
+        tip = mt.MJoint.create(name=f'{child}_tip', under=child, match=child)
+        tip.tx.set(10)
+        tip.freeze()
+
+
+def dev_skin_weight():
+    dev_reset_scene()
+    path = r'F:\TMP\test.fbx'
+    if not mc.pluginInfo("fbxmaya", q=True, loaded=True):
+        mc.loadPlugin("fbxmaya")
+    mc.file(path, i=True,type='FBX',ignoreVersion=True)
+    from XBase import MTransform as mt
+    from XBase.MDeformer import MSkinCluster
+    from XBase.MBaseFunctions import compress_list,decompress_lst
+    # sphere = mc.polySphere()[0]
+    # sphere_shape = mc.listRelatives(sphere, children=True)[0]
+    # jnt_set = mt.MJointChain.create([f'jnt_{i}' for i in range(100)])
+    # for i,jnt in enumerate(jnt_set):
+    #     pos = mc.xform(f'{sphere_shape}.vtx[{i}]',worldSpace=True,translation=True,q=True)
+    #     jnt.t.set(pos)
+    sc_name = [i for i in mc.listHistory('F01_MacheLotus01_UpBody_HDShape') if mc.objectType(i)=='skinCluster'][0]
+    msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape',sc_name)
+
+    weight=msc.get_weight()
+    compressed_weight = compress_list(list(weight))
+    decompressed_weight = decompress_lst(compressed_weight)
+    print(len(weight))
+    print(len(compressed_weight))
+    print(len(decompressed_weight))
+    print(weight[:2070])
+    print(decompressed_weight[:2070])
+    print(compressed_weight[:2070])
+    with open('./test.txt','w') as f:
+        f.write(str(compressed_weight))
+
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
     # dev_reload()
-    dev_add_mirror_joint_to_cluster()
+    dev_skin_weight()

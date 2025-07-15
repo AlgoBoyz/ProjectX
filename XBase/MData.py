@@ -2,6 +2,7 @@ import os
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
+
 import maya.api.OpenMayaAnim as oman
 from maya.api.OpenMayaAnim import MFnSkinCluster
 
@@ -109,33 +110,14 @@ class MeshData(object):
         pass
 
 
-class MSkinCluster(MNode):
-
-    def __init__(self, name):
-        super().__init__(name)
-
-    @classmethod
-    def get_skin_cluster_from_node(cls, node_name):
-        skin_cluster = [i for i in mc.listHistory(node_name) if mc.objectType(i) == 'skinCluster']
-        if not skin_cluster:
-            raise RuntimeError(f'Not skin cluster node found in object:{node_name}')
-        return cls(skin_cluster[0])
-
-    @property
-    def skin_fn(self):
-        fn = oman.MFnSkinCluster(self.dp_node)
-        return fn
-    def collect_weight_data(self):
-        weight = self.skin_fn
-        return weight
-
-
 class MWeightData(object):
     DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'res', 'GeoData', 'Weight')
 
-    def __init__(self, mskin_node: MSkinCluster):
-        self.weight_array = []
-        self.joint_array = []
+    def __init__(self, data):
+        self.joint_array = data[0]
+        self.weight_array = data[1]
+        self.weight_mapper = data[2]
+        self.node_attrs_values = data[3]
 
 
 class MBlendShapeData(object):

@@ -1,6 +1,6 @@
 import math
 import maya.cmds as mc
-
+import maya.api.OpenMaya as om
 
 def get_list_types(lst: list):
     if not lst:
@@ -65,8 +65,6 @@ def get_joint_pos_array(joints):
     pass
 
 
-def calculate_plane_normal(vec1, vec2):
-    return cross_product(vec1, vec2)
 
 
 def get_third_axis(axis1, axis2):
@@ -123,7 +121,7 @@ def transfer_influences():
         for inf in infs_source:
             if inf in target_infs:
                 continue
-            mc.skinCluster(target_skin_cluster, addInfluence=inf, weight=0.0, e=True)
+            mc.skinCluster(target_skin_cluster, addInfluence=inf, weight=0.0, lockWeights=True, e=True)
             print(f'Adding influence:{inf} to {target_skin_cluster}')
 
 
@@ -141,6 +139,34 @@ def get_skin_cluster(mesh):
     return [i for i in mc.listHistory(mesh) if mc.objectType(i) == 'skinCluster'][0] or None
 
 
+def compress_list(lst,limit=2):
+    compressed_lst = []
+    zero_counter = 0
+    for i,num in enumerate(lst):
+        if num == 0:
+            zero_counter+=1
+        else:
+            if zero_counter != 0:
+                if zero_counter < limit:
+                    for _ in range(zero_counter):
+                        compressed_lst.append(0.0)
+                else:
+                    compressed_lst.append([zero_counter])
+            compressed_lst.append(num)
+            zero_counter=0
+        if i == len(lst)-1:
+            compressed_lst.append([zero_counter])
+    return compressed_lst
+
+def decompress_lst(lst):
+    decompressed_lst = []
+    for comp in lst:
+        if isinstance(comp,list):
+            for i in range(comp[0]):
+                decompressed_lst.append(0.0)
+        else:
+            decompressed_lst.append(comp)
+    return decompressed_lst
 
 class StrUtils(object):
 
@@ -153,6 +179,34 @@ class StrUtils(object):
         new_string = ' '.join(chars)
         return new_string
 
+class OMUtils(object):
 
+    @staticmethod
+    def get_dependency_node(node_name):
+        sel_list :om.MSelectionList= om.MGlobal.getSelectionListByName(node_name)
+        dp = sel_list.getDependNode(0)
+        return dp
+
+    @staticmethod
+    def get_dag_path(node_name):
+        sel_list :om.MSelectionList= om.MGlobal.getSelectionListByName(node_name)
+        dag = sel_list.getDagPath(0)
+        return dag
+
+    @staticmethod
+    def get_mesh_component(mesh,idx=None):
+        mesh_fn = om.MFnMesh(OMUtils.get_dependency_node(mesh))
+        single_comp = om.MFnSingleIndexedComponent()
+        mo = single_comp.create(om.MFn.kMeshVertComponent)
+        if idx is None:
+            single_comp.addElements([i for i in range(mesh_fn.numVertices)])
+        elif isinstance(idx,list) or isinstance(idx,tuple):
+                single_comp.addElements(idx)
+        elif isinstance(idx,int):
+            single_comp.addElement(idx)
+        else:
+            raise RuntimeError(f'Wrong index :{idx}')
+
+        return mo
 if __name__ == '__main__':
     pass

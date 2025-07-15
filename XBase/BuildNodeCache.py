@@ -28,6 +28,7 @@ def build_class(node_name, attrs):
 
 
 def dev():
+    #todo:mc.attributeInfo
     attrs_out = []
     for node_name in get_all_nodes(txt_path):
         node = mc.createNode(node_name)

@@ -149,6 +149,7 @@ class MNode(VitualNode):
             self.name = name
         self.__check_exist()
 
+
     def __repr__(self):
         return f'{self.__class__.__name__} object in name of :{self.name}'
 
@@ -195,6 +196,11 @@ class MNode(VitualNode):
             return connected
         else:
             return None
+
+    @property
+    def all_attrs(self):
+        attrs = mc.attributeInfo(allAttributes=True, type=self._CREATE_STR)
+        print(attrs)
 
     @property
     def node_type(self):
@@ -252,8 +258,8 @@ class MAttribute(object):
         return self.full_name
 
     def __getitem__(self, item):
-        if not self.attr_type in ['matrix']:
-            raise RuntimeError(f'{AttrType} do not support index operation')
+        if not self.attr_type in ['matrix', 'double3']:
+            raise RuntimeError(f'{self.attr_type} do not support index operation')
         try:
             res = mc.getAttr(f'{self.full_name}[{item}]')
             print(res)
@@ -341,8 +347,7 @@ class MAttribute(object):
         pass
 
     def set(self, value):
-        if isinstance(value, list):
-            print(self.full_name, value, len(value))
+
         if isinstance(value, int) and self.attr_type in ['double', 'float', 'doubleLinear', 'doubleAngle']:
             print(f'Assigning an int({value}) to a float or double ,convert the value to {float(value)}')
             value = float(value)
