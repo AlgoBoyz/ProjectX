@@ -6,8 +6,8 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 from XBase.MNodes import MNode
 from XBase.MGeometry import MMesh
-
-
+from XBase.MData import MWeightData
+from XBase.MBaseFunctions import compress_list,decompress_lst,OMUtils
 class MSkinCluster(MNode):
     _CREATE_STR = 'skinCluster'
 
@@ -32,9 +32,23 @@ class MSkinCluster(MNode):
     def rebuild_from_data(cls, data):
         pass
 
-    def get_weight(self, pnt_indices=None, inf_indices=None):
-        shape_dag = self.shape_mn.dag_path
+    @property
+    def influences(self):
+        infs = [i for i in mc.listHistory(self.name) if mc.objectType(i) == 'joint']
+        return infs
 
+    @property
+    def influences_dag(self):
+        infs = [om.MGlobal.getSelectionListByName(i).getDagPath(0) for i in self.influences]
+        return infs
+
+    @property
+    def influence_logical_indices(self):
+        indices = [self.skin_fn.indexForInfluenceObject(i) for i in self.influences_dag]
+        return indices
+
+    def get_weight_array(self, pnt_indices=None, inf_indices=None):
+        shape_dag = self.shape_mn.dag_path
         component_fn = om.MFnSingleIndexedComponent()
         component = component_fn.create(om.MFn.kMeshVertComponent)
         if pnt_indices is None:
@@ -56,12 +70,14 @@ class MSkinCluster(MNode):
         weight = self.skin_fn.getWeights(shape_dag,component,inf_indices)
         return weight
 
-    @property
-    def influences(self):
-        infs = [i for i in mc.listHistory(self.name) if mc.objectType(i) == 'joint']
-        return infs
+    def set_weight(self,weight_array,inf_array):
 
-
+        component = OMUtils.get_mesh_component(self.shape_mn.name)
+        if isinstance(weight_array,list):
+            weight_array=om.MDoubleArray(weight_array)
+        if isinstance(inf_array,list):
+            inf_array = om.MIntArray(inf_array)
+        self.skin_fn.setWeights(self.shape_mn.dag_path,component,inf_array,weight_array)
 class MBlendshape(object):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership', 'input',
                  'weightFunction', 'outputGeometry', 'originalGeometry', 'envelopeWeightsList', 'blockGPU', 'envelope',

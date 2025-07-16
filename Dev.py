@@ -10,6 +10,9 @@ import XUI.XMainWindow
 
 import datetime
 
+from XBase.MDeformer import MSkinCluster
+from XBase.MTransform import MJoint
+
 
 def standalone():
     import maya.standalone
@@ -576,32 +579,52 @@ def dev_skin_weight():
     if not mc.pluginInfo("fbxmaya", q=True, loaded=True):
         mc.loadPlugin("fbxmaya")
     mc.file(path, i=True,type='FBX',ignoreVersion=True)
-    from XBase import MTransform as mt
     from XBase.MDeformer import MSkinCluster
     from XBase.MBaseFunctions import compress_list,decompress_lst
-    # sphere = mc.polySphere()[0]
-    # sphere_shape = mc.listRelatives(sphere, children=True)[0]
-    # jnt_set = mt.MJointChain.create([f'jnt_{i}' for i in range(100)])
-    # for i,jnt in enumerate(jnt_set):
-    #     pos = mc.xform(f'{sphere_shape}.vtx[{i}]',worldSpace=True,translation=True,q=True)
-    #     jnt.t.set(pos)
+
     sc_name = [i for i in mc.listHistory('F01_MacheLotus01_UpBody_HDShape') if mc.objectType(i)=='skinCluster'][0]
     msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape',sc_name)
 
-    weight=msc.get_weight()
+    weight=msc.get_weight_array()
     compressed_weight = compress_list(list(weight))
-    decompressed_weight = decompress_lst(compressed_weight)
-    print(len(weight))
-    print(len(compressed_weight))
-    print(len(decompressed_weight))
-    print(weight[:2070])
-    print(decompressed_weight[:2070])
-    print(compressed_weight[:2070])
+    # decompressed_weight = decompress_lst(compressed_weight)
+    inf_matrix = [MJoint(i).worldMatrix.value for i in msc.influences]
+    inf_parens = [MJoint(i).parent.name for i in msc.influences]
     with open('./test.txt','w') as f:
-        f.write(str(compressed_weight))
+        f.write(str([sc_name,msc.influences,inf_parens,inf_matrix,compressed_weight]))
 
+def dev_load_skin_weight():
+    dev_reset_scene()
+    import ast
+    from XBase.MBaseFunctions import compress_list,decompress_lst
+    from XBase.MTransform import MJoint
+    from XBase.MDeformer import MSkinCluster
+    data_path = r'F:\Code\Python\ProjectX\test.txt'
+    path = r'F:\TMP\cloth_geo.fbx'
+    if not mc.pluginInfo("fbxmaya", q=True, loaded=True):
+        mc.loadPlugin("fbxmaya")
+    mc.file(path, i=True,type='FBX',ignoreVersion=True)
+    with open(data_path,'r') as f:
+        data = ast.literal_eval(f.read())
+        infs = [i.replace('_output','') for i in data[1]]
+        parents = data[2]
+        matrices = data[3]
+        weight = decompress_lst(data[4])
+    for i,inf in enumerate(infs):
+        jnt = MJoint.create(inf)
+        mc.xform(jnt.name,worldSpace=True,matrix=matrices[i])
+        jnt.freeze()
+    for i,jnt in enumerate(infs):
+        try:
+            jnt_mt = MJoint(jnt.replace('_output',''))
+            jnt_mt.set_parent(parents[i].replace('_output',''))
+        except:
+            pass
+    sc = mc.skinCluster(*infs,'F01_MacheLotus01_UpBody_HD')[0]
+    msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape',sc)
+    msc.set_weight(decompress_lst(weight),[i for i in range(len(infs))])
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
     # dev_reload()
-    dev_skin_weight()
+    dev_load_skin_weight()
