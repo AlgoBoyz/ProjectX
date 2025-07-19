@@ -1,6 +1,6 @@
 import os
 import sys
-from importlib import reload
+import logging
 from XBase.MConstant import PROJECT_BASE_DIR
 import maya.cmds as mc
 from maya.internal.nodes.blendfalloff.action import PRIMITIVE_ICON
@@ -28,7 +28,7 @@ def build_class(node_name, attrs):
 
 
 def dev():
-    #todo:mc.attributeInfo
+    # todo:mc.attributeInfo
     attrs_out = []
     for node_name in get_all_nodes(txt_path):
         node = mc.createNode(node_name)
@@ -48,18 +48,29 @@ def dev():
 
 
 def build_math_node_cache():
-    import XBase.MMathNode as mm
+    from XBase import MMathNode
+    keys = MMathNode.__dict__.keys()
+    names = []
+    for key in keys:
+        cls = getattr(MMathNode, key)
+        try:
+            names.append(cls._CREATE_STR)
+        except Exception as e:
+            logging.error(e)
     attrs_out = []
-    for node_name in get_all_nodes(math_node_path):
-        node = mc.createNode(node_name)
-        print(f'Node:{node} created!')
-        attrs = mc.listAttr(node)
-        for attr in attrs:
-            if attr in attrs_out or '.' in attr:
-                continue
-            attrs_out.append(attr)
-        attrs_out.append(attr)
-    return attrs_out
+    for name in names:
+        try:
+            attrs = mc.attributeInfo(type=name, allAttributes=True)
+            for attr in attrs:
+                if attr in attrs_out:
+                    continue
+                attrs_out.append(attr)
+        except Exception as e:
+            logging.error(e)
+    except_attrs = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership']
+    for i in except_attrs:
+        attrs_out.remove(i)
+    print(attrs_out)
 
 
 if __name__ == "__main__":

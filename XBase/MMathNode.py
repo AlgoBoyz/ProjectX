@@ -8,33 +8,30 @@ from .MNodes import MNode, MAttribute
 
 
 class VitualMathNode(object):
-    __slots__ = ['matrixIn', 'matrixSum', 'matrixSum', 'inputMatrix', 'inputRotateOrder', 'outputTranslate',
-                 'outputTranslateX',
-                 'outputTranslateY', 'outputTranslateZ', 'outputRotate', 'outputRotateX', 'outputRotateY',
-                 'outputRotateZ', 'outputScale', 'outputScaleX', 'outputScaleY', 'outputScaleZ', 'outputShear',
-                 'outputShearX', 'outputShearY', 'outputShearZ', 'outputQuat', 'outputQuatX', 'outputQuatY',
-                 'outputQuatZ', 'outputQuatW', 'outputQuatW', 'binMembership', 'input1', 'input2', 'output', 'output',
-                 'binMembership', 'output', 'operation', 'input1X', 'input1Y', 'input1Z', 'input2X', 'input2Y',
-                 'input2Z', 'outputX', 'outputY', 'outputZ', 'outputZ', 'binMembership', 'binMembership', 'firstTerm',
-                 'secondTerm', 'colorIfTrue', 'colorIfTrueR', 'colorIfTrueG', 'colorIfTrueB', 'colorIfFalse',
-                 'colorIfFalseR', 'colorIfFalseG', 'colorIfFalseB', 'outColor', 'outColorR', 'outColorG', 'outColorB',
-                 'outColorB', 'inputValue', 'inputMin', 'inputMax', 'outputMin', 'outputMax', 'value', 'color',
-                 'outValue', 'outColorB', 'valueX', 'valueY', 'valueZ', 'min', 'minX', 'minY', 'minZ', 'max', 'maxX',
-                 'maxY', 'maxZ', 'oldMin', 'oldMinX', 'oldMinY', 'oldMinZ', 'oldMax', 'oldMaxX', 'oldMaxY', 'oldMaxZ',
-                 'outValueX', 'outValueY', 'outValueZ', 'outValueZ', 'output']
+    __slots__ = ['input1', 'input2', 'output', 'operation', 'input1X', 'input1Y', 'input1Z', 'input2X', 'input2Y',
+                 'input2Z', 'outputX', 'outputY', 'outputZ', 'floatA', 'floatB', 'outFloat', 'firstTerm', 'secondTerm',
+                 'colorIfTrue', 'colorIfTrueR', 'colorIfTrueG', 'colorIfTrueB', 'colorIfFalse', 'colorIfFalseR',
+                 'colorIfFalseG', 'colorIfFalseB', 'outColor', 'outColorR', 'outColorG', 'outColorB', 'inputMatrix',
+                 'inputRotateOrder', 'outputTranslate', 'outputTranslateX', 'outputTranslateY', 'outputTranslateZ',
+                 'outputRotate', 'outputRotateX', 'outputRotateY', 'outputRotateZ', 'outputScale', 'outputScaleX',
+                 'outputScaleY', 'outputScaleZ', 'outputShear', 'outputShearX', 'outputShearY', 'outputShearZ',
+                 'outputQuat', 'outputQuatX', 'outputQuatY', 'outputQuatZ', 'outputQuatW', 'matrixIn', 'matrixSum',
+                 'colorA', 'colorAR', 'colorAG', 'colorAB', 'alphaA', 'colorB', 'colorBR', 'colorBG', 'colorBB',
+                 'alphaB', 'outAlpha', 'matrix', 'normalizeOutput', 'value', 'valueX', 'valueY', 'valueZ', 'min',
+                 'minX', 'minY', 'minZ', 'max', 'maxX', 'maxY', 'maxZ', 'oldMin', 'oldMinX', 'oldMinY', 'oldMinZ',
+                 'oldMax', 'oldMaxX', 'oldMaxY', 'oldMaxZ', 'outValue', 'outValueX', 'outValueY', 'outValueZ',
+                 'inputValue', 'inputMin', 'inputMax', 'outputMin', 'outputMax', 'value_Position', 'value_FloatValue',
+                 'value_Interp', 'color', 'color_Position', 'color_Color', 'color_ColorR', 'color_ColorG',
+                 'color_ColorB', 'color_Interp', 'input', 'inputX', 'inputY', 'inputZ', 'point1', 'point1X', 'point1Y',
+                 'point1Z', 'inMatrix1', 'point2', 'point2X', 'point2Y', 'point2Z', 'inMatrix2', 'distance']
 
 
 class MathNode(VitualMathNode):
     _CREATE_STR = 'VitualMathNode'
 
     def __init__(self, name):
-        if name is None:
-            raise RuntimeError(f'Can not initialize from None')
-        if isinstance(name, self.__class__):
-            print(f'Initializing from {self.__class__}')
-            self.name = name.name
-        else:
-            self.name = name
+
+        self.name = name
         self.__check_exist()
 
     def __repr__(self):
@@ -60,19 +57,12 @@ class MathNode(VitualMathNode):
         if not name:
             name = cls._CREATE_STR
         node = mc.createNode(cls._CREATE_STR, name=name)
-        under = kwargs.pop('under', None)
-        match = kwargs.pop('match', None)
-        pos = kwargs.pop('posisition', kwargs.pop('pos', None))
-        if kwargs:
-            raise ValueError(f'Parameter:{kwargs} is not supported!')
-        if under:
-            if isinstance(under, str):
-                mc.parent(node, under)
-            elif isinstance(under, cls):
-                mc.parent(node, under.name)
-        if match:
-            pass
+        if mc.nodeType(node) == 'unknown':
+            raise RuntimeError(f'Failed to create node:{name},type:{cls._CREATE_STR}')
         return cls(node)
+
+    def attr(self, attr_name):
+        return MAttribute(self.name, attr_name)
 
 
 class addDoubleLinear(MathNode):
@@ -182,8 +172,36 @@ class normalize(MathNode):
     def __init__(self, name):
         super().__init__(name)
 
+
 class distanceBetween(MathNode):
     _CREATE_STR = 'distanceBetween'
 
     def __init__(self, name):
         super().__init__(name)
+        self.out_plug = self.distance
+
+    def quick_connect(self, point1, point2):
+        self.set_point(1, point1)
+        self.set_point(2, point2)
+
+    def set_point(self, idx, point):
+        target_attr = self.attr(f'point{idx}')
+        if isinstance(point, list) or isinstance(point, tuple):
+            if not len(point) == 3:
+                raise RuntimeError(f'Not legal point({point}) to calculate distance.')
+            target_attr.set(point)
+        if isinstance(point, str):
+            point = MAttribute.create_by_name(point)
+        point.connect(target_attr)
+
+
+class Mmultiply(object):
+    # todo 1：自动适应maya版本，选择不同的节点
+    # todo 2：自动根据数值，挑选合适的节点类型进行创建
+    # todo 3: 自动连接属性
+
+    def __init__(self):
+        pass
+
+    def create(self, name):
+        pass

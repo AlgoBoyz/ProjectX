@@ -433,11 +433,11 @@ class MTripleJointChain(MJointChain):
         return self.vec_ab.length()+self.vec_bc.length()
     @property
     def pv_vec(self)->om.MVector:
-        '''
+        """
         a*b = |a|*|b|*cos
-        --> a*b/|b| = |a|*cos
-        --> 点乘结果除以b的模长等于a在b上的投影长度，再除以b的模长，等于投影在b上占的比例
-        '''
+        → a*b/|b| = |a|*cos
+        → 点乘结果除以b的模长等于a在b上的投影长度，再除以b的模长，等于投影在b上占的比例
+        """
 
         factor = (self.vec_ab * self.vec_ac) / self.vec_ac.length() ** 2
         vec_db = self.vec_ab - self.vec_ac * factor
