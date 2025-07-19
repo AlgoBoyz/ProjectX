@@ -16,7 +16,6 @@ class MSkinCluster(MNode):
         self.skin_fn = MFnSkinCluster(self.dp_node)
         self.skin_cluster_node_data = {}
         self.shape_name = shape_name
-        print(self.shape_name)
         self.shape_mn = MMesh(self.shape_name)
         # to collect: name,node_attrs,skin influences,skin weight,deformer weight
 
@@ -72,12 +71,20 @@ class MSkinCluster(MNode):
 
     def set_weight(self,weight_array,inf_array):
 
-        component = OMUtils.get_mesh_component(self.shape_mn.name)
+        component = OMUtils.get_mesh_component(self.shape_name)
         if isinstance(weight_array,list):
             weight_array=om.MDoubleArray(weight_array)
         if isinstance(inf_array,list):
             inf_array = om.MIntArray(inf_array)
         self.skin_fn.setWeights(self.shape_mn.dag_path,component,inf_array,weight_array)
+
+    def rearrange_weight(self,weight_array,mapper_lst):
+        new_array = weight_array
+        for i in range(0,len(weight_array),len(mapper_lst)):
+            chunk = weight_array[i:i+len(mapper_lst)]
+            for j,num in enumerate(chunk):
+                new_array[i+j] = chunk[mapper_lst[j]]
+        return new_array
 class MBlendshape(object):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership', 'input',
                  'weightFunction', 'outputGeometry', 'originalGeometry', 'envelopeWeightsList', 'blockGPU', 'envelope',

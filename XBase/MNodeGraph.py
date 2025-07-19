@@ -35,7 +35,7 @@ class MFormula(object):
     def get_node_from_name(self):
         pass
 
-    def insert(self, idx):
+    def insert(self, idx,in_attr,out_attr):
         pass
 
 

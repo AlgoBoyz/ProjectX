@@ -67,8 +67,11 @@ def dev():
 
 def dev_attribute():
     from XBase import MTransform as mt
-    jc = mt.MTransform.create('test')
-    print(jc.translate[0])
+    from XBase.MNodes import MNode
+    MNode.create()
+    # jc = mt.MTransform.create('test')
+    # jc.rotateX.set_driven_key(jc.translateX,0,0)
+    # jc.rotateX.set_driven_key(jc.translateX,100,30)
 
 
 def dev_print():
@@ -102,14 +105,19 @@ def dev_ui():
 
 
 def dev_component():
+    # dev_reset_scene()
     from XModules import MComponent
     from XBase import MTransform as mt
-    jc = mt.MJointChain.create(['jnt1', 'jnt2', 'jnt3'])
+    jc = mt.MTripleJointChain(['jnt1', 'jnt2', 'jnt3'])
+    # jc[1].tx.set(10)
+    # jc[2].tx.set(10)
+    # jc[0].ry.set(30)
+    # jc[1].ry.set(-60)
+    # jc.freeze()
     cp = MComponent.IKComponent('LF_Arm_01', jc)
     cp.build()
 
-
-def dev_create_skined_mesh():
+def dev_create_skinned_mesh():
     from XBase import MTransform as mt
     plane = mc.polyPlane(subdivisionsX=5, subdivisionsY=5)[0]
     jnts = [mt.MJoint.create(f'test_jnt_{i}').name for i in range(10)]
@@ -120,7 +128,7 @@ def dev_create_skined_mesh():
 
 def dev_save_data():
     standalone()
-    mesh, jnts = dev_create_skined_mesh()
+    mesh, jnts = dev_create_skinned_mesh()
     from XBase import MGeometry
     from XBase.MData import MCurveData, MWeightData
     # weight = MSkinCluster.get_skin_cluster_from_node(mesh).collect_weight_data()
@@ -290,7 +298,7 @@ def dev_skirt():
         rot_remap.outValue.connect(jc[0].rz)
 
         # mc.connectAttr(f'{leg_jc[0].name}.param1', f'{rot_remap.name}.value[0].value_Position')
-        leg_jc[0].attr('param1').connect(f'{rot_remap.name}.value[0].value_Position', compund=True)
+        leg_jc[0].attr('param1').connect(f'{rot_remap.name}.value[0].value_Position', compound=True)
 
 
 def dev_triple_jc():
@@ -311,7 +319,7 @@ def dev_create_psd_locs():
     # mc.file(path, i=True)
     import XBase.MTransform as mt
     from XBase.MMathNode import vectorProduct
-    jnt_names = ['Ankle']
+    jnt_names = ['Hip','Knee','Ankle','Shoulder','Elbow','Wrist']
     dot_value_collect_node = mt.MTransform('dot_value_collect')
     for side in ['L', 'R']:
         factor = 1 if side == 'R' else -1
@@ -326,30 +334,28 @@ def dev_create_psd_locs():
             # vector
             move_loc = mt.MLocator.create(f'{jnt_name}_Move_Loc', match_parent=jnt_node)
             move_loc.tx.set(factor * 100.0)
-            move_vec = move_loc.shape.worldPosition.substract(origin_loc.shape.worldPosition, 'test')
+            move_vec = move_loc.shape.worldPosition.subtract(origin_loc.shape.worldPosition, 'test')
 
             for axis in ['y', 'z']:
-                for i in [1, -1]:
-                    for angle in [90]:
-                        sign = 'P' if i == 1 else 'N'
-                        origin_tip_loc = mt.MLocator.create(f'{jnt_name}_OriginTip{sign}{axis.capitalize()}{angle}_Loc',
-                                                            match_parent=root_space_grp
-                                                            )
+                for angle in [90]:
+                    origin_tip_loc = mt.MLocator.create(f'{jnt_name}_OriginTip{axis.capitalize()}{angle}_Loc',
+                                                        match_parent=root_space_grp
+                                                        )
 
-                        par = origin_tip_loc.insert_parent(f'{origin_tip_loc.name}_Offset')
-                        par.attr(f'r{axis}').set(i * angle)
+                    par = origin_tip_loc.insert_parent(f'{origin_tip_loc.name}_Offset')
+                    par.attr(f'r{axis}').set( angle)
 
-                        origin_tip_loc.tx.set(factor * 100.0)
-                        axis_vec = origin_tip_loc.shape.worldPosition.substract(origin_loc.shape.worldPosition, 'test')
-                        cos = om.MVector(*move_vec.outColor.value).normal() * om.MVector(
-                            *axis_vec.outColor.value).normal()
-                        dot = vectorProduct.create(f'{origin_tip_loc}_dot')
-                        dot.dot(move_vec, axis_vec)
+                    origin_tip_loc.tx.set(factor * 100.0)
+                    axis_vec = origin_tip_loc.shape.worldPosition.subtract(origin_loc.shape.worldPosition, 'test')
+                    cos = om.MVector(*move_vec.outColor.value).normal() * om.MVector(
+                        *axis_vec.outColor.value).normal()
+                    dot = vectorProduct.create(f'{origin_tip_loc}_dot')
+                    dot.dot(move_vec, axis_vec)
 
-                        dot_value_collect_node.add_attr(attr_name=f'{origin_tip_loc}_dot_value', at='float', k=True)
-                        dot_value_collect_node.add_attr(attr_name=f'{origin_tip_loc}_cos', at='float', k=True)
-                        dot.outputX.connect(dot_value_collect_node.attr(f'{origin_tip_loc}_dot_value'))
-                        dot_value_collect_node.attr(f'{origin_tip_loc}_cos').set(cos)
+                    dot_value_collect_node.add_attr(attr_name=f'{origin_tip_loc}_dot_value', at='float', k=True)
+                    dot_value_collect_node.add_attr(attr_name=f'{origin_tip_loc}_cos', at='float', k=True)
+                    dot.outputX.connect(dot_value_collect_node.attr(f'{origin_tip_loc}_dot_value'))
+                    dot_value_collect_node.attr(f'{origin_tip_loc}_cos').set(cos)
 
 
 def dev_MShape():
@@ -596,7 +602,7 @@ def dev_skin_weight():
 def dev_load_skin_weight():
     dev_reset_scene()
     import ast
-    from XBase.MBaseFunctions import compress_list,decompress_lst
+    from XBase.MBaseFunctions import compress_list,decompress_lst,OMUtils
     from XBase.MTransform import MJoint
     from XBase.MDeformer import MSkinCluster
     data_path = r'F:\Code\Python\ProjectX\test.txt'
@@ -616,15 +622,20 @@ def dev_load_skin_weight():
         jnt.freeze()
     for i,jnt in enumerate(infs):
         try:
-            jnt_mt = MJoint(jnt.replace('_output',''))
+            jnt_mt = MJoint(jnt)
             jnt_mt.set_parent(parents[i].replace('_output',''))
         except:
             pass
     sc = mc.skinCluster(*infs,'F01_MacheLotus01_UpBody_HD')[0]
     msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape',sc)
-    msc.set_weight(decompress_lst(weight),[i for i in range(len(infs))])
+    mapper = [msc.skin_fn.indexForInfluenceObject(OMUtils.get_dag_path(i)) for i in [jnt.replace('_output','') for jnt in infs]]
+    weight_data = decompress_lst(weight)
+    # final_weight = msc.rearrange_weight(weight_data,mapper)
+    msc.set_weight(weight_data,[i for i in range(len(infs))])
+
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    # dev_reload()
-    dev_load_skin_weight()
+    dev_component()
+    # dev_load_skin_weight()
+

@@ -154,7 +154,7 @@ def compress_list(lst,limit=2):
                     compressed_lst.append([zero_counter])
             compressed_lst.append(num)
             zero_counter=0
-        if i == len(lst)-1:
+        if i == len(lst)-1 and zero_counter>0:
             compressed_lst.append([zero_counter])
     return compressed_lst
 

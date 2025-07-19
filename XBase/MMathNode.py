@@ -181,3 +181,9 @@ class normalize(MathNode):
 
     def __init__(self, name):
         super().__init__(name)
+
+class distanceBetween(MathNode):
+    _CREATE_STR = 'distanceBetween'
+
+    def __init__(self, name):
+        super().__init__(name)

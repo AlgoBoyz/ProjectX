@@ -1,21 +1,15 @@
 from . import MComponent
 
 
-class TestModule(object):
-
-    def __init__(self, template, config):
-        self.template = template
-        self.config = config
-        self.IK_component = MComponent.IKComponent.create(template, config)
-        self.module_name = f'{template.alias}_Module'
-        self.module_members = []
-
-    def register_member(self, component):
-        self.module_members.append(component)
-
-    def build(self):
+class MTriLimbModule(object):
+    # ik fk IkFkSwitch softIk twist corrective
+    def __init__(self,alias,blue_print):
+        #blue_print:collection of data,with functions to build a template in scene which is modifiable
         pass
 
-    def test(self):
-        for i in range(10):
-            self.register_member('')
+class MQuadLimbModule(object):
+    pass
+
+class MSpineModule(object):
+    pass
+

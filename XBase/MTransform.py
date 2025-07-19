@@ -14,20 +14,17 @@ from .MConstant import XSpace, WorldUpType, Axis, Matrix
 
 class MTransform(MNodes.MNode):
     _CREATE_STR = 'transform'
-    root_space = XSpace.transform_root
 
     def __init__(self, name):
         super().__init__(name)
         self.top_group = None
 
-    @classmethod
-    def set_root_space(cls, root):
-        cls.root_space = root
 
     @classmethod
     def create(cls, name=None, **kwargs) -> 'MTransform':
-        if cls.root_space:
-            instance = super().create(name, under=cls.root_space, **kwargs)
+        print(f'Creating {name},root：{XSpace.transform_root}')
+        if XSpace.transform_root:
+            instance = super().create(name, under=XSpace.transform_root, **kwargs)
         else:
             instance = super().create(name, **kwargs)
         return instance
@@ -105,7 +102,17 @@ class MTransform(MNodes.MNode):
 
     def unparent(self):
         pass
-
+    def lock_attrs(self,*attr_prefix,vis=True,hide=True):
+        for axis in ['x','y','z']:
+            for prefix in attr_prefix:
+                if hide:
+                    mc.setAttr(f'{self}.{prefix}{axis}',lock=True,keyable=False)
+                    if vis:
+                        mc.setAttr(f'{self}.v', lock=True, keyable=False)
+                else:
+                    mc.setAttr(f'{self}.{prefix}{axis}', lock=True)
+                    if vis:
+                        mc.setAttr(f'{self}.v', lock=True)
     def freeze(self, translate=True, rotate=True, scale=True):
         mc.makeIdentity(self.name, apply=True, translate=translate, rotate=rotate, scale=scale)
 
@@ -119,7 +126,7 @@ class MTransform(MNodes.MNode):
             pos = [i for i in pos]
         mc.xform(self.name, worldSpace=world, translation=pos)
 
-    def match_rotatation(self, rot, world=True):
+    def match_rotation(self, rot, world=True):
         mc.xform(self.name, worldSpace=world, rotation=rot, e=True)
 
     def move_by(self, vec, world=True):
@@ -177,7 +184,6 @@ class MTransform(MNodes.MNode):
 
 class MLocator(MTransform):
     _CREATE_STR = 'locator'
-    root_space = XSpace.locator_root
 
     def __init__(self, name, shape):
         super().__init__(name)
@@ -191,9 +197,11 @@ class MLocator(MTransform):
         transform = mc.listRelatives(shape, parent=True)[0]
         instance = cls(transform, shape)
         instance.rename(name)
-        parent = kwargs.pop('parent', '')
-        if parent:
-            instance.set_parent(MTransform(parent))
+        if XSpace.locator_root:
+            instance.set_parent(XSpace.locator_root)
+        under = kwargs.pop('under', '')
+        if under:
+            instance.set_parent(under)
         match = kwargs.pop('match', '')
         if match:
             instance.match(MTransform(match))
@@ -201,6 +209,7 @@ class MLocator(MTransform):
         if match_parent:
             instance.set_parent(match_parent)
             instance.match(MTransform(match_parent))
+
         return instance
 
 
@@ -338,10 +347,10 @@ class MJointChain(MJointSet):
 
     @property
     def plane_normal(self):
-        from XBase.MBaseFunctions import calculate_plane_normal
+        from XBase.MBaseFunctions import cross_product
         vec1 = self[1].world_pos - self[0].world_pos
         vec2 = self[2].world_pos - self[1].world_pos
-        normal = calculate_plane_normal(vec1, vec2)
+        normal = cross_product(vec1, vec2)
         return normal
 
     def update_chain(self):
@@ -465,7 +474,7 @@ class MTripleJointChain(MJointChain):
         pass
 
     def get_pole_vec_pos(self, multiplier=2):
-        pv_pos = self[1].world_pos + self.pv_vec * multiplier
+        pv_pos = self[1].world_pos + (self.pv_vec * multiplier)
         return pv_pos
 
 

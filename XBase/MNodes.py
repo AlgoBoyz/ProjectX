@@ -5,7 +5,7 @@ from XBase.MConstant import Sign, AttrType
 from .MBaseFunctions import get_list_types
 
 
-class VitualNode(object):
+class VirtualNode(object):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership',
                  'hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
                  'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
@@ -136,7 +136,7 @@ class VitualNode(object):
                  'outputQuatX', 'outputQuatY', 'outputQuatZ', 'outputQuatW']
 
 
-class MNode(VitualNode):
+class MNode(VirtualNode):
     _CREATE_STR = 'MNodeBase'
 
     def __init__(self, name):
@@ -173,9 +173,11 @@ class MNode(VitualNode):
         if not name:
             name = cls._CREATE_STR
         node = mc.createNode(cls._CREATE_STR, name=name)
+        if mc.nodeType(node) == 'unknown':
+            raise RuntimeError(f'Failed to create node:{name},type:{cls._CREATE_STR}')
         under = kwargs.pop('under', None)
         match = kwargs.pop('match', None)
-        pos = kwargs.pop('posisition', kwargs.pop('pos', None))
+        pos = kwargs.pop('position', kwargs.pop('pos', None))
         if kwargs:
             raise ValueError(f'Parameter:{kwargs} is not supported!')
         if under:
@@ -252,7 +254,7 @@ class MAttribute(object):
         self.attr_type = mc.getAttr(self.full_name, type=True)
 
     def __repr__(self):
-        return f'MAttribue: {self.full_name}'
+        return f'MAttribute: {self.full_name}'
 
     def __str__(self):
         return self.full_name
@@ -277,7 +279,7 @@ class MAttribute(object):
         if '.' not in attr:
             raise AttributeError(f'Wrong format of attribute:{attr}')
         if not mc.objExists(attr):
-            raise AttributeError(f'Attibute:{attr} do not exist')
+            raise AttributeError(f'Attribute:{attr} do not exist')
         splited = attr.split('.')
         if not splited or len(splited) != 2:
             raise AttributeError(f'Wrong format of attribute:{attr}')
@@ -318,10 +320,10 @@ class MAttribute(object):
         else:
             return None
 
-    def connect(self, other, force=False, compund=False) -> 'MNode':
+    def connect(self, other, force=False, compound=False) -> 'MNode':
         other_node = ''
         if isinstance(other, str):
-            if compund:
+            if compound:
                 node = other.split('.')[0]
                 attr = other.split('.', 1)[1]
             else:
@@ -372,21 +374,24 @@ class MAttribute(object):
             node_name = other.split('.', 1)[0]
             attr_name = other.split('.', 1)[1]
             other = MAttribute(node_name, attr_name)
+
         if self.attr_type in AttrType.ValueType:
             add_node = addDoubleLinear.create(f'{alias}_adl')
             self.connect(add_node.input1)
             other.connect(add_node.input2)
+            plug = add_node.output
 
-        elif self.attr_type in AttrType.CompundType:
+        elif self.attr_type in AttrType.CompoundType and other.attr_type in AttrType.CompoundType:
             add_node = colorMath.create(f'{alias}_clrm')
             add_node.operation.set(0)
             self.connect(add_node.colorA)
             other.connect(add_node.colorB)
+            plug = add_node.outColor
         else:
-            raise RuntimeError(f'Operation add do not support attibute type of :{self.attr_type}')
-        return add_node
+            raise RuntimeError(f'Operation add do not support attribute type of :{self.attr_type}')
+        return [add_node,plug]
 
-    def substract(self, other, alias):
+    def subtract(self, other, alias):
         from XBase.MMathNode import floatMath, colorMath
         if isinstance(other, str) and mc.objExists(other):
             node_name = other.split('.', 1)[0]
@@ -397,40 +402,105 @@ class MAttribute(object):
             sub_node.operation.set(1)
             self.connect(sub_node.floatA)
             other.connect(sub_node.floatB)
+            plug = sub_node.outFloat
 
-        elif self.attr_type in AttrType.CompundType:
+        elif self.attr_type in AttrType.CompoundType:
             sub_node = colorMath.create(f'{alias}_clrm')
             sub_node.operation.set(1)
             self.connect(sub_node.colorA)
             other.connect(sub_node.colorB)
+            plug = sub_node.outColor
         else:
-            raise RuntimeError(f'Operation substract do not support attibute type of :{self.attr_type}')
-        return sub_node
+            raise RuntimeError(f'Operation subtract do not support attribute type of :{self.attr_type}')
+        return [sub_node,plug]
 
     def multiply(self, other, alias):
-        from XBase.MMathNode import floatMath, colorMath
+        from XBase.MMathNode import floatMath, colorMath,vectorProduct
+        mult_node = None
+        plug = None
+        vector_types = ['float3','double3']
         if isinstance(other, str) and mc.objExists(other):
             node_name = other.split('.', 1)[0]
             attr_name = other.split('.', 1)[1]
             other = MAttribute(node_name, attr_name)
-        # case 1: scalar * scalar
-        # case 2: scalar * vector
-        # case 3: scalar * matrix
+
         if self.attr_type in AttrType.ValueType:
-            if other.attr_type in ['float3', 'double3']:
-                mult_node = colorMath.create(f'{alias}_clrm')
+            # 标量*常数 标量*标量 标量*向量 标量*矩阵
+            # todo:设计之初忘记考虑常量的情况了，之后重构一下吧
+            if isinstance(other,int) or isinstance(other,float):
+                mult_node = floatMath.create(f"{alias}_flm") # return outFloat
+                mult_node.operation.set(2)
+                self.connect(mult_node.floatA)
+                mult_node.floatB.set(other)
+                plug = mult_node.outFloat
+            elif other.attr_type in AttrType.ValueType:
+                mult_node = floatMath.create(f"{alias}_flm") # return outFloat
+                mult_node.operation.set(2)
+                self.connect(mult_node.floatA)
+                other.connect(mult_node.floatB)
+                plug = mult_node.outFloat
+            elif other.attr_type in vector_types:
+                mult_node = colorMath.create(f'{alias}_clm') # return outColor
+                mult_node.operation.set(2)
                 self.connect(mult_node.colorAR)
                 self.connect(mult_node.colorAG)
                 self.connect(mult_node.colorAB)
                 other.connect(mult_node.colorB)
+                plug = mult_node.outColor
             elif other.attr_type == 'matrix':
+                # todo 目前还不知道标量乘矩阵在绑定中能起什么作用，权当占位符吧
                 raise NotImplemented
+            else:
+                raise RuntimeError(f'Not supported operation:{self.attr_type}*{other.attr_type}')
+        elif self.attr_type in vector_types :
+            if isinstance(other,int) or isinstance(other,float):
+                mult_node = vectorProduct.create(f'{alias}_vp')
+                self.connect(mult_node.input1)
+                mult_node.input1X.set(other)
+                mult_node.input1Y.set(other)
+                mult_node.input1Z.set(other)
+                plug = mult_node.output
+            elif other.attr_type in vector_types:
+                mult_node = vectorProduct.create(f'{alias}_vp')
+                self.connect(mult_node.input1)
+                other.connect(mult_node.input2)
+                mult_node.operation.set(1)
+                plug = mult_node.output
             elif other.attr_type in AttrType.ValueType:
-                mult_node = floatMath.create(f'{alias}_flm')
-                mult_node.operation.set(2)
-                self.connect(mult_node.floatA)
-                other.connect(mult_node.floatB)
+                mult_node = colorMath.create(f'{alias}_clm')
+                self.connect(mult_node.colorA)
+                other.connect(mult_node.colorBR)
+                other.connect(mult_node.colorBG)
+                other.connect(mult_node.colorBB)
+                plug = mult_node.outColor
+            elif other.attr_type == 'matrix':
+                raise NotImplemented('Do not support right multiply matrix yet!')
+        elif self.attr_type == 'matrix':
+            if other.attr_type in vector_types:
+                pass
+            elif other.attr_type == 'matrix':
+                pass
+            else:
+                raise RuntimeError(f'Not supported operation:{self.attr_type}*{other.attr_type}')
+        return [mult_node,plug]
+    def distance_to(self,other,alias):
+        if isinstance(other, str) and mc.objExists(other):
+            node_name = other.split('.', 1)[0]
+            attr_name = other.split('.', 1)[1]
+            other = MAttribute(node_name,attr_name)
+        from XBase.MMathNode import distanceBetween
+        if not self.attr_type in AttrType.CompoundType or not other.attr_type in AttrType.CompoundType:
+            raise RuntimeError(f'Can not get distance without vector type:{self.attr_type,other.attr_type}')
+        distance_node = distanceBetween.create(f'{alias}_dist')
+        self.connect(distance_node.point1)
+        other.connect(distance_node.point2)
+        return distance_node
+    def set_driven_key(self,driver_attr,driver_val,driven_val):
+        driver_attr = driver_attr.full_name if isinstance(driver_attr,MAttribute) else driver_attr
+        mc.setDrivenKeyframe(self.full_name,
+                             currentDriver=driver_attr,
+                             driverValue=driver_val,
+                             value=driven_val)
 
-        # case 4: vector * matrix
-        elif self.attr_type in ['float3', 'double3']:
-            pass
+    def as_condition(self,color_true,color_false):
+        pass
