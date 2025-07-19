@@ -1,33 +1,43 @@
-from typing import Iterator, Union, Optional
-
-from maya.OpenMaya import MVector
+from typing import Iterator, Union
 
 import maya.api.OpenMaya as om
 import maya.cmds as mc
 
-from XBase import MBaseFunctions as mb
-from XBase import MNodes
+from XBase.MNodes import MNode
 from XBase.MShape import MLocatorShape
-from maya.app.type.legacy.arabicConvert import inMergeRange
-from .MConstant import XSpace, WorldUpType, Axis, Matrix
+from XBase.MConstant import XSpace, WorldUpType, Axis
 
 
-class MTransform(MNodes.MNode):
+class MTransform(MNode):
     _CREATE_STR = 'transform'
 
     def __init__(self, name):
         super().__init__(name)
         self.top_group = None
 
-
     @classmethod
     def create(cls, name=None, **kwargs) -> 'MTransform':
-        print(f'Creating {name},root：{XSpace.transform_root}')
-        if XSpace.transform_root:
-            instance = super().create(name, under=XSpace.transform_root, **kwargs)
-        else:
-            instance = super().create(name, **kwargs)
-        return instance
+        node = super().create(name).name
+
+        under = kwargs.pop('under', None)
+        match = kwargs.pop('match', None)
+        pos = kwargs.pop('position', kwargs.pop('pos', None))
+        if kwargs:
+            raise ValueError(f'Parameter:{kwargs} is not supported!')
+
+        if under:
+            if isinstance(under, str):
+                mc.parent(node, under)
+            elif isinstance(under, cls):
+                mc.parent(node, under.name)
+        if match:
+            mc.matchTransform(node, match)
+        if pos:
+            mc.xform(node, worldSpace=True, translation=pos)
+        if XSpace.transform_root and not under:
+            mc.parent(node,XSpace.transform_root)
+
+        return cls(node)
 
     @property
     def children(self):
@@ -63,7 +73,7 @@ class MTransform(MNodes.MNode):
         elif isinstance(p, list) and len(p) == 1:
             return MTransform(p[0])
         else:
-            raise RuntimeError(f'Failed to retrive parent of {self.name}\nresult:{p}')
+            raise RuntimeError(f'Failed to retrieve parent of {self.name}\nresult:{p}')
 
     def set_parent(self, parent):
         if parent is None or parent == 'None':
@@ -152,34 +162,30 @@ class MTransform(MNodes.MNode):
         return mat
 
     def reorient(self, aim_axis, aim_vec, up_axis, up_vec):
-        print(f'Reorienting node:{self.name}')
+        from XBase.MBaseFunctions import normalize_vector,cross_product
         axis_index_look_up = {Axis.X.name: 0, Axis.Y.name: 1, Axis.Z.name: 2}
-
         lst = [i for i in axis_index_look_up.values()]
-
         mat = self.get_world_matrix()
         aim_index = axis_index_look_up[aim_axis]
-        lst.remove(aim_index)
         up_index = axis_index_look_up[up_axis]
+
+        lst.remove(aim_index)
         lst.remove(up_index)
         third_index = lst[0]
-        third_vec = mb.normalize_vector(mb.cross_product(aim_vec, up_vec))
+
+        third_vec = normalize_vector(cross_product(aim_vec, up_vec))
         aim_vec.append(0.0)
         up_vec.append(0.0)
         third_vec.append(0.0)
         mat[aim_index] = aim_vec[:4]
         mat[up_index] = up_vec[:4]
         mat[third_index] = third_vec[:4]
-        # print('aim2', aim_vec)
-        # print('up2', up_vec)
-        # print('third', third_vec)
+
         reformat_mat = []
         for lst in mat:
             for i in lst:
                 reformat_mat.append(i)
-        # print(f'Matrix previous :{reformat_mat}')
         mc.xform(self.name, matrix=reformat_mat)
-        # print(f'Matrix after :{self.worldMatrix.value}')
 
 
 class MLocator(MTransform):
@@ -217,39 +223,6 @@ class MJoint(MTransform):
     _CREATE_STR = 'joint'
     root_space = XSpace.joint_root
 
-    @classmethod
-    def create(cls, name=None, **kwargs) -> 'MJoint':
-        instance = super().create(name, **kwargs)
-
-        return cls(instance.name)
-
-    @property
-    def joint_data(self):
-        data = {
-            'name': self.name,
-            'pos': tuple(self.world_pos)[:3],
-            'rot': self.rotate.value,
-            'scale': self.scale.value,
-            'orient': self.rotateOrder.value,
-            'parent': str(self.parent)
-
-        }
-        return data
-
-    @classmethod
-    def recreate_from_data(cls, data):
-        jnt_name = data['name']
-        if mc.objExists(jnt_name):
-            raise RuntimeError(f'Joint: {jnt_name} already exist!')
-        jnt = cls.create(jnt_name)
-        jnt.set_parent(data['parent'])
-        jnt.rotateOrder.set(data['orient'])
-        jnt.translate.set(data['pos'])
-        jnt.rotate.set(data['rot'])
-        jnt.scale.set(data['scale'])
-        return jnt
-
-
 class MTransformList(object):
     MEMBER_TYPE = MTransform
 
@@ -270,7 +243,8 @@ class MTransformList(object):
         return f'{self.__class__.__name__}({self.len}):{self.node_names}'
 
     def _init_node_list(self):
-        lst_types = mb.get_list_types(self.node_names)
+        from XBase.MBaseFunctions import get_list_types
+        lst_types = get_list_types(self.node_names)
         if isinstance(lst_types, list) and len(lst_types) > 1:
             raise ValueError(f'Input joint list:{self.nodes} has more than one type:{lst_types}')
         if lst_types == str:
@@ -281,7 +255,8 @@ class MTransformList(object):
 
     @classmethod
     def create(cls, names: list):
-        exist = mb.check_list_exist(names)
+        from XBase.MBaseFunctions import check_list_exist
+        exist = check_list_exist(names)
         nodes_created = []
         if not exist:
             for name in names:
@@ -327,12 +302,13 @@ class MJointSet(MTransformList):
     def __iter__(self) -> Iterator[MJoint]:
         return iter(self.nodes)
 
+    def __len__(self):
+        return len(self.node_names)
 
 class MJointChain(MJointSet):
 
     def __init__(self, joints: list):
         super().__init__(joints)
-
     def __getitem__(self, idx) -> Union[MJoint, 'MJointChain']:
         if isinstance(idx, slice):
             return MJointChain(self.nodes[idx])
@@ -363,15 +339,16 @@ class MJointChain(MJointSet):
     def duplicate(self):
         pass
 
-    def reorient(self, aim_aixs, up_axis, up_obj):
+    def reorient(self, aim_axis, up_axis, up_obj):
+        from XBase.MBaseFunctions import revert_axis
         previous_parent = self[0].parent
         self.unparent_all()
         for i, jnt in enumerate(self):
-            if not i == self.length - 1:
-                print(i, self.length)
+            if not i == len(self) - 1:
+                print(i, len(self))
                 constraint_node = jnt.set_aim_constraint(
                     other=self.node_names[i + 1],
-                    aim_vec=aim_aixs,
+                    aim_vec=aim_axis,
                     up_vec=up_axis,
                     up_type=WorldUpType.Object.value,
                     up_obj=up_obj
@@ -379,7 +356,7 @@ class MJointChain(MJointSet):
             else:
                 constraint_node = jnt.set_aim_constraint(
                     other=self.node_names[i - 1],
-                    aim_vec=mb.revert_axis(aim_aixs),
+                    aim_vec=revert_axis(aim_axis),
                     up_vec=up_axis,
                     up_type=WorldUpType.Object.value,
                     up_obj=up_obj
@@ -391,24 +368,21 @@ class MJointChain(MJointSet):
         self[0].set_parent(previous_parent)
 
     def reorient_to_plane_normal(self, aim_axis, up_axis):
+        from XBase.MBaseFunctions import normalize_vector
         pre_parent = self[0].parent
         self.unparent_all()
         aim_vecs = []
         for i, jnt in enumerate(self):
-            matrix = jnt.worldMatrix.value
-            vec_array = [matrix[i:i + 4] for i in range(0, 16, 4)]
-            if i != self.length - 1:
+            if i != len(self) - 1:
                 jnt_aim_vec = [round(i, 10) for i in tuple((self[i + 1].world_pos - jnt.world_pos).normal())]
             else:
                 jnt_aim_vec = aim_vecs[i - 1]
 
             aim_vecs.append(jnt_aim_vec)
-            print(self.plane_normal, 'plane normal')
-            print(jnt_aim_vec, 'aim')
             jnt.reorient(aim_axis=aim_axis,
-                         aim_vec=mb.normalize_vector(jnt_aim_vec),
+                         aim_vec=normalize_vector(jnt_aim_vec),
                          up_axis=up_axis,
-                         up_vec=mb.normalize_vector(self.plane_normal))
+                         up_vec=normalize_vector(self.plane_normal))
             jnt.freeze()
         self.parent_all()
         self[0].set_parent(pre_parent)
@@ -454,14 +428,15 @@ class MTripleJointChain(MJointChain):
     def vec_bc(self):
         vec_bc = self[2].world_pos - self[1].world_pos
         return vec_bc
-
     @property
-    def pv_vec(self):
+    def total_length(self):
+        return self.vec_ab.length()+self.vec_bc.length()
+    @property
+    def pv_vec(self)->om.MVector:
         '''
         a*b = |a|*|b|*cos
         --> a*b/|b| = |a|*cos
         --> 点乘结果除以b的模长等于a在b上的投影长度，再除以b的模长，等于投影在b上占的比例
-        :return:
         '''
 
         factor = (self.vec_ab * self.vec_ac) / self.vec_ac.length() ** 2
@@ -471,10 +446,12 @@ class MTripleJointChain(MJointChain):
 
     @property
     def normal(self):
-        pass
+        from XBase.MBaseFunctions import cross_product
+        return cross_product(self.vec_ab,self.vec_bc)
 
     def get_pole_vec_pos(self, multiplier=2):
-        pv_pos = self[1].world_pos + (self.pv_vec * multiplier)
+        vec :om.MVector= multiplier * self.pv_vec
+        pv_pos = self[1].world_pos + vec
         return pv_pos
 
 

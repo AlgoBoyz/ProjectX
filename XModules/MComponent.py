@@ -5,7 +5,7 @@ import maya.cmds as mc
 
 from XBase import *
 from XBase import MTransform as mt
-from XBase.MConstant import AttrType, XSpace
+from XBase.MConstant import AttrType, XSpace, ConditionOperation
 from XBase.MTransform import MTripleJointChain
 
 
@@ -48,6 +48,9 @@ class IKComponent(MJointBaseComponent):
         else:
             raise RuntimeError(f'Failed to initialize IKComponent')
         self._to_clean = []
+
+        self.ik_handle_loc = None
+        self.fst_jnt_loc = None
     def pre_build(self):
         if self.config.pre_build_func:
             self.config.pre_build_func()
@@ -94,16 +97,36 @@ class IKComponent(MJointBaseComponent):
 
     def _create_ik_stretch(self):
         stretch_alias = f'{self.alias}_Stretch'
-        self.ik_handle_loc = mt.MLocator.create(f'{self.alias}_IkHandle_Loc',
-                                                match_parent=self.ik_handle)
-        self.first_joint_loc = mt.MLocator.create(f'{self.joint_chain[0].name}_Loc',
+
+        if self.ik_handle_loc is None:
+            self.ik_handle_loc = mt.MLocator.create(f'{self.alias}_IkHandle_Loc',
+                                                    match_parent=self.ik_handle)
+        if self.fst_jnt_loc is None:
+            self.fst_jnt_loc = mt.MLocator.create(f'{self.joint_chain[0].name}_Loc',
                                                   match_parent = self.joint_chain[0])
-        distance_node = self.ik_handle_loc.shape.worldPosition.distance_to(self.first_joint_loc.shape.worldPosition,
-                                                                        alias=stretch_alias)
-        mult_node=distance_node.distance.multiply(0.5,alias=stretch_alias)[0]
+
+        self.dist_ac = self.ik_handle_loc.shape.worldPosition.distance_to(self.fst_jnt_loc.shape.worldPosition,
+                                                                           alias=stretch_alias)
+        mult_node=self.dist_ac.distance.multiply(0.5,alias=stretch_alias)[0]
+        self.stretch_condition = self.dist_ac.distance.as_condition(second_term=self.joint_chain.total_length,
+                                                                    color_true=mult_node.outFloat,
+                                                                    color_false=[self.joint_chain[1].tx.value,0,0],
+                                                                    operation=ConditionOperation.GreaterThan.value,
+                                                                    alias = stretch_alias)
+        self.stretch_condition.outColorR.connect(self.joint_chain[1].tx)
+        self.stretch_condition.outColorR.connect(self.joint_chain[2].tx)
 
     def _create_ik_lock(self):
-        pass
+        if self.ik_handle_loc is None:
+            self.ik_handle_loc = mt.MLocator.create(f'{self.alias}_IkHandle_Loc',
+                                                    match_parent=self.ik_handle)
+        if self.fst_jnt_loc is None:
+            self.fst_jnt_loc = mt.MLocator.create(f'{self.joint_chain[0].name}_Loc',
+                                                  match_parent = self.joint_chain[0])
+
+        distance_ap = self.fst_jnt_loc.shape.worldPosition.distance_to(self.pole_vec_loc.shape.worldPosition)
+        distance_pc = self.pole_vec_loc.shape.worldPosition.distance_to(self.ik_handle_loc.shape.worldPosition)
+
     def clean(self):
         for element in self._to_clean:
             pass

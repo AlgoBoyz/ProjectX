@@ -1,7 +1,6 @@
 from importlib import reload
 import os.path
 import sys
-from xml.sax.saxutils import XMLFilterBase
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
