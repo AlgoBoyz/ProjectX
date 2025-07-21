@@ -65,10 +65,10 @@ def dev():
 def dev_attribute():
     from XBase import MTransform as mt
     from XBase.MNodes import MNode
-    MNode.create()
-    # jc = mt.MTransform.create('test')
+    jc = mt.MTransform.create('test')
     # jc.rotateX.set_driven_key(jc.translateX,0,0)
     # jc.rotateX.set_driven_key(jc.translateX,100,30)
+    jc.translate.multiply(jc.rotate, 'test')
 
 
 def dev_print():
@@ -634,6 +634,4 @@ def dev_load_skin_weight():
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    # dev_build_node_slot()
-    print(sys.version_info.minor)
-    # dev_load_skin_weight()
+    dev_attribute()

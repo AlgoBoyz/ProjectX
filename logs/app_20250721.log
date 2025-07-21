@@ -1,0 +1,5 @@
+2025-07-21 23:02:25 - ERROR - MMathNode:280 - Failed to initialize multiply node due to:'str' object has no attribute 'create'
+2025-07-21 23:03:24 - ERROR - MMathNode:280 - Failed to initialize multiply node due to:'str' object has no attribute 'create'
+2025-07-21 23:59:07 - INFO - MAttribute:85 - test.translate>>test_mldv.input1
+2025-07-21 23:59:07 - ERROR - MMathNode:318 - Failed to initialize multiply node due to:setAttr: No object matches name: test_mldv.test_mldv.input2X
+

@@ -5,6 +5,7 @@ from imp import reload
 import sys
 
 import maya.cmds as mc
+from maya.internal.nodes.componenttags.ae_template import labelEnterName
 
 from XBase.MConstant import AttrType
 from XBase.MAttribute import MAttribute
@@ -32,7 +33,7 @@ class VitualMathNode(object):
 class MathNode(VitualMathNode):
     _CREATE_STR = 'VitualMathNode'
 
-    def __init__(self, name):
+    def __init__(self, name, *args, **kwargs):
 
         self.name = name
         self.__check_exist()
@@ -97,9 +98,46 @@ class multDoubleLinear(MathNode):
 class multiplyDivide(MathNode):
     _CREATE_STR = 'multiplyDivide'
     ALIAS = 'mldv'
+    MULTIPLY = 1
+    DEVIDE = 2
+    POWER = 3
 
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    @classmethod
+    def create(cls, name=None, **kwargs):
+        instance = super().create(name)
+        operation = kwargs.pop('operation', 1)
+        instance.operation.set(operation)
+        return cls(instance.name)
+
+    def quick_connect(self, *args, **kwargs):
+        """
+        args: input1,input2
+        kwargs:operation
+        """
+        operation = kwargs.pop('operation', 1)
+        self.operation.set(operation)
+        if not len(args) == 2:
+            logging.error(f'multiplyDivide:Require 2 input,got {args} instead.')
+        for i, attr_in in enumerate(args):
+            target_attr = MAttribute(self.name, f'input{i + 1}')
+            if isinstance(attr_in, int) or isinstance(attr_in, float):
+                for axis in ['X', 'Y', 'Z']:
+                    mc.setAttr(f'{target_attr.full_name}{axis}', attr_in)
+            elif isinstance(attr_in, list) or isinstance(attr_in, tuple):
+                if not len(attr_in) == 3:
+                    logging.error(
+                        f'multipltDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
+                    raise RuntimeError(
+                        f'multipltDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
+                target_attr.set(attr_in)
+            elif isinstance(attr_in, str):
+                mattr = MAttribute.create_by_name(attr_in)
+                mattr.connect(target_attr)
+            elif isinstance(attr_in, MAttribute):
+                attr_in.connect(target_attr)
 
 
 class floatMath(MathNode):
@@ -225,6 +263,7 @@ class Mmultiply(object):
 
     SUPPORTED_DICT = {
         'scalar*raw_scalar': 'multDoubleLinear',  # 常数*单通道属性
+        'scalar*scalar': 'multDoubleLinear',  # 单通道*单通道
 
         'scalar*raw_vector': 'multiplyDivide',  # 单通道属性*向量
 
@@ -233,11 +272,15 @@ class Mmultiply(object):
         'scalar*vector': 'multiplyDivide',  # 单通道属性*向量属性
         'vector*scalar': 'multiplyDivide',
 
+        'vector*vector': 'vectorProduct',
+
         'raw_scalar*matrix': NotImplemented,  # 暂时没想到用处，需要的时候再写
 
         'matrix*vector': NotImplemented  # 矩阵左乘向量，之后也许会用到
 
     }
+    if sys.version_info.minor == 11:
+        SUPPORTED_DICT['vector*vector'] = 'dotProduct'
 
     def __init__(self, alias, input1, input2):
         self.alias = alias
@@ -273,7 +316,7 @@ class Mmultiply(object):
             cls_name = self.SUPPORTED_DICT[self.input_attr_types]
             cls = globals()[cls_name]
             name = f'{self.alias}_{cls.ALIAS}'
-            mult_node: MathNode = cls_name.create(name)
+            mult_node: MathNode = cls.create(name)
             mult_node.quick_connect(self.input1, self.input2)
 
         except Exception as e:

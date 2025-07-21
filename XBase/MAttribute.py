@@ -123,7 +123,7 @@ class MAttribute(object):
 
     def multiply(self, other, alias):
         from XBase.MMathNode import Mmultiply
-
+        mult_node = Mmultiply(alias, self, other)
 
     def distance_to(self, other, alias):
         from XBase.MMathNode import distanceBetween
