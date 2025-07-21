@@ -1,10 +1,13 @@
+import logging
 import pdb
 from imp import reload
 
 import sys
 
 import maya.cmds as mc
-from .MNodes import MNode, MAttribute
+
+from XBase.MConstant import AttrType
+from XBase.MAttribute import MAttribute
 
 
 class VitualMathNode(object):
@@ -64,20 +67,26 @@ class MathNode(VitualMathNode):
     def attr(self, attr_name):
         return MAttribute(self.name, attr_name)
 
+    def quick_connect(self, *args, **kwargs):
+        return NotImplemented
+
 
 class addDoubleLinear(MathNode):
     _CREATE_STR = 'addDoubleLinear'
-
+    ALIAS = 'adl'
     if sys.version_info.minor == 11:
         _CREATE_STR = 'addDL'
 
     def __init__(self, name):
         super().__init__(name)
+        # node labels
+        self.valid_type = [AttrType.ValueType]
+        self.valid_version = []  # empty list if valid in all version
 
 
 class multDoubleLinear(MathNode):
     _CREATE_STR = 'multDoubleLinear'
-
+    ALIAS = 'mdl'
     if sys.version_info.minor == 11:
         _CREATE_STR = 'multDL'
 
@@ -87,6 +96,7 @@ class multDoubleLinear(MathNode):
 
 class multiplyDivide(MathNode):
     _CREATE_STR = 'multiplyDivide'
+    ALIAS = 'mldv'
 
     def __init__(self, name):
         super().__init__(name)
@@ -94,6 +104,7 @@ class multiplyDivide(MathNode):
 
 class floatMath(MathNode):
     _CREATE_STR = 'floatMath'
+    ALIAS = 'flm'
 
     def __init__(self, name):
         super().__init__(name)
@@ -101,6 +112,7 @@ class floatMath(MathNode):
 
 class condition(MathNode):
     _CREATE_STR = 'condition'
+    ALIAS = 'cdtn'
 
     def __init__(self, name):
         super().__init__(name)
@@ -108,6 +120,7 @@ class condition(MathNode):
 
 class decomposeMatrix(MathNode):
     _CREATE_STR = 'decomposeMatrix'
+    ALIAS = 'dcpm'
 
     def __init__(self, name):
         super().__init__(name)
@@ -117,6 +130,7 @@ class multMatrix(MathNode):
     _CREATE_STR = 'multMatrix'
     __slots__ = ['multMatrix', 'message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState',
                  'binMembership', 'matrixIn', 'matrixSum']
+    ALIAS = 'mltmt'
 
     def __init__(self, name):
         super().__init__(name)
@@ -124,6 +138,7 @@ class multMatrix(MathNode):
 
 class colorMath(MathNode):
     _CREATE_STR = 'colorMath'
+    ALIAS = 'clrm'
 
     def __init__(self, name):
         super().__init__(name)
@@ -131,6 +146,7 @@ class colorMath(MathNode):
 
 class dotProduct(MathNode):
     _CREATE_STR = 'dotProduct'
+    ALIAS = 'dot'
 
     def __init__(self, name):
         super().__init__(name)
@@ -138,6 +154,7 @@ class dotProduct(MathNode):
 
 class vectorProduct(MathNode):
     _CREATE_STR = 'vectorProduct'
+    ALIAS = 'vecpd'
 
     def __init__(self, name):
         super().__init__(name)
@@ -154,6 +171,7 @@ class vectorProduct(MathNode):
 
 class setRange(MathNode):
     _CREATE_STR = 'setRange'
+    ALIAS = 'sr'
 
     def __init__(self, name):
         super().__init__(name)
@@ -161,6 +179,7 @@ class setRange(MathNode):
 
 class remapValue(MathNode):
     _CREATE_STR = 'remapValue'
+    ALIAS = 'rmv'
 
     def __init__(self, name):
         super().__init__(name)
@@ -168,6 +187,7 @@ class remapValue(MathNode):
 
 class normalize(MathNode):
     _CREATE_STR = 'normalize'
+    ALIAS = 'normalize'
 
     def __init__(self, name):
         super().__init__(name)
@@ -175,6 +195,7 @@ class normalize(MathNode):
 
 class distanceBetween(MathNode):
     _CREATE_STR = 'distanceBetween'
+    ALIAS = 'dist'
 
     def __init__(self, name):
         super().__init__(name)
@@ -196,12 +217,64 @@ class distanceBetween(MathNode):
 
 
 class Mmultiply(object):
-    # todo 1：自动适应maya版本，选择不同的节点
+    # todo 1：自动适应maya版本，选择不同的节点（适应版本的工作交到具体的节点类，此处只做调用）
     # todo 2：自动根据数值，挑选合适的节点类型进行创建
     # todo 3: 自动连接属性
 
-    def __init__(self):
-        pass
+    # attrribute types:constant,scalar,vector,matrix
 
-    def create(self, name):
-        pass
+    SUPPORTED_DICT = {
+        'scalar*raw_scalar': 'multDoubleLinear',  # 常数*单通道属性
+
+        'scalar*raw_vector': 'multiplyDivide',  # 单通道属性*向量
+
+        'vector*raw_scalar': 'multiplyDivide',  # 常数*向量属性
+
+        'scalar*vector': 'multiplyDivide',  # 单通道属性*向量属性
+        'vector*scalar': 'multiplyDivide',
+
+        'raw_scalar*matrix': NotImplemented,  # 暂时没想到用处，需要的时候再写
+
+        'matrix*vector': NotImplemented  # 矩阵左乘向量，之后也许会用到
+
+    }
+
+    def __init__(self, alias, input1, input2):
+        self.alias = alias
+        self.input_attr_types = ''
+        self.input1 = input1
+        self.input2 = input2
+        self.parse_input()
+        self.build()
+
+    def parse_input(self):
+        attr_type = []
+        for i in [self.input1, self.input2]:
+            if isinstance(i, float) or isinstance(i, int):
+                attr_type.append('raw_scalar')
+            elif isinstance(i, list) or isinstance(i, tuple):
+                attr_type.append('raw_vector')
+            elif isinstance(i, str):
+                mattr = MAttribute.create_by_name(i)
+            elif isinstance(i, MAttribute):
+                mattr = i
+                if mattr.attr_type in AttrType.ValueType:
+                    attr_type.append('scalar')
+                elif mattr.attr_type in AttrType.CompoundType:
+                    attr_type.append('vector')
+                elif mattr.attr_type == 'matrix':
+                    attr_type.append('matrix')
+                else:
+                    raise RuntimeError(f'Unrecognized attribute:{i}({mattr.attr_type})')
+        self.input_attr_types = '*'.join(attr_type)
+
+    def build(self):
+        try:
+            cls_name = self.SUPPORTED_DICT[self.input_attr_types]
+            cls = globals()[cls_name]
+            name = f'{self.alias}_{cls.ALIAS}'
+            mult_node: MathNode = cls_name.create(name)
+            mult_node.quick_connect(self.input1, self.input2)
+
+        except Exception as e:
+            logging.error(f'Failed to initialize multiply node due to:{e}')
