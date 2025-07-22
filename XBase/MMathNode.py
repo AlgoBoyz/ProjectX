@@ -11,7 +11,7 @@ from XBase.MConstant import AttrType
 from XBase.MAttribute import MAttribute
 
 
-class VitualMathNode(object):
+class VirtualMathNode(object):
     __slots__ = ['input1', 'input2', 'output', 'operation', 'input1X', 'input1Y', 'input1Z', 'input2X', 'input2Y',
                  'input2Z', 'outputX', 'outputY', 'outputZ', 'floatA', 'floatB', 'outFloat', 'firstTerm', 'secondTerm',
                  'colorIfTrue', 'colorIfTrueR', 'colorIfTrueG', 'colorIfTrueB', 'colorIfFalse', 'colorIfFalseR',
@@ -30,8 +30,8 @@ class VitualMathNode(object):
                  'point1Z', 'inMatrix1', 'point2', 'point2X', 'point2Y', 'point2Z', 'inMatrix2', 'distance']
 
 
-class MathNode(VitualMathNode):
-    _CREATE_STR = 'VitualMathNode'
+class MathNode(VirtualMathNode):
+    _CREATE_STR = 'VirtualMathNode'
 
     def __init__(self, name, *args, **kwargs):
 
@@ -129,9 +129,9 @@ class multiplyDivide(MathNode):
             elif isinstance(attr_in, list) or isinstance(attr_in, tuple):
                 if not len(attr_in) == 3:
                     logging.error(
-                        f'multipltDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
+                        f'multiplyDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
                     raise RuntimeError(
-                        f'multipltDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
+                        f'multiplyDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
                 target_attr.set(attr_in)
             elif isinstance(attr_in, str):
                 mattr = MAttribute.create_by_name(attr_in)
