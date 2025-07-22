@@ -1,5 +1,4 @@
 import logging
-from xml.sax.saxutils import XMLFilterBase
 
 import maya.cmds as mc
 
@@ -61,8 +60,8 @@ class MAttribute(object):
 
     @property
     def sign(self):
-        if not self.attr_type in ['float', 'double', 'int']:
-            return None
+        if not self.attr_type in AttrType.ValueType:
+            logging.warning(f'{self.full_name} do not have sign!')
         if self.value > 0:
             return Sign.Positive
         elif self.value == 0:
@@ -72,7 +71,10 @@ class MAttribute(object):
         else:
             return None
 
-    def connect(self, other, force=False):
+    def mount(self, other, force=False):
+        """
+        other:常数，字符串，字符串列表，数值列表，MAttribute
+        """
         other_node = ''
         if isinstance(other, str):
             if not mc.objExists(other):
@@ -85,16 +87,29 @@ class MAttribute(object):
             logging.info(f'{self.full_name}>>{other.full_name}')
         elif isinstance(other, list):
             other_type = get_list_types(other)
-            if not other_type != str and other_type != MAttribute:
-                raise AttributeError(f'Wrong format of list of attibutes:{other}')
-            for attr in other:
-                self.connect(attr, force=force)
+            if other_type == str:
+                for attr in other:
+                    if not mc.objExists(attr):
+                        raise RuntimeError(f'Attribute{attr} in attribute list:{other} do not exists!')
+                    mc.connectAttr(self.full_name,attr)
+            elif other_type == int or other_type == float:
+                mc.setAttr(self.full_name,other,type=self.attr_type)
+            else:
+                raise RuntimeError(f'Not supported attribute list:{other}')
+        elif isinstance(other,int) or isinstance(other,float):
+            if self.attr_type in AttrType.ValueType:
+                mc.setAttr(self.full_name,other)
+            elif self.attr_type in AttrType.CompoundType:
+                other = [other,other,other]
+                mc.setAttr(self.full_name,other,type=self.attr_type)
+
         else:
-            raise RuntimeError(f'Not supported attibute to connect')
+            raise RuntimeError(f'Not supported attribute to connect')
         return other_node
 
     def disconnect(self):
         pass
+
 
     def set(self, value):
         if isinstance(value, int) and self.attr_type in ['double', 'float', 'doubleLinear', 'doubleAngle']:
@@ -109,28 +124,6 @@ class MAttribute(object):
         else:
             mc.setAttr(self.full_name, value)
 
-    def get(self, raw=True):
-        if raw:
-            return mc.getAttr(self.full_name)
-        else:
-            return self.value
-
-    def add(self, other, alias):
-        pass
-
-    def subtract(self, other, alias):
-        pass
-
-    def multiply(self, other, alias):
-        from XBase.MMathNode import Mmultiply
-        mult_node = Mmultiply(alias, self, other)
-
-    def distance_to(self, other, alias):
-        from XBase.MMathNode import distanceBetween
-        dist_node = distanceBetween.create(f'{alias}_dist')
-        dist_node.quick_connect(self, other)
-        return dist_node
-
     def set_driven_key(self, driver_attr, driver_val, driven_val):
         driver_attr = driver_attr.full_name if isinstance(driver_attr, MAttribute) else driver_attr
         mc.setDrivenKeyframe(self.full_name,
@@ -138,5 +131,3 @@ class MAttribute(object):
                              driverValue=driver_val,
                              value=driven_val)
 
-    def as_condition(self, color_true, color_false):
-        pass

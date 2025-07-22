@@ -5,11 +5,11 @@ from imp import reload
 import sys
 
 import maya.cmds as mc
-from maya.internal.nodes.componenttags.ae_template import labelEnterName
 
 from XBase.MConstant import AttrType
 from XBase.MAttribute import MAttribute
 
+# 妈蛋，写起来才发现又是个大坑
 
 class VirtualMathNode(object):
     __slots__ = ['input1', 'input2', 'output', 'operation', 'input1X', 'input1Y', 'input1Z', 'input2X', 'input2Y',
@@ -97,9 +97,10 @@ class multDoubleLinear(MathNode):
 
 class multiplyDivide(MathNode):
     _CREATE_STR = 'multiplyDivide'
+
     ALIAS = 'mldv'
     MULTIPLY = 1
-    DEVIDE = 2
+    DIVIDE= 2
     POWER = 3
 
     def __init__(self, name, *args, **kwargs):
@@ -137,7 +138,7 @@ class multiplyDivide(MathNode):
                 mattr = MAttribute.create_by_name(attr_in)
                 mattr.connect(target_attr)
             elif isinstance(attr_in, MAttribute):
-                attr_in.connect(target_attr)
+                attr_in.mount(target_attr)
 
 
 class floatMath(MathNode):
@@ -192,7 +193,7 @@ class dotProduct(MathNode):
 
 class vectorProduct(MathNode):
     _CREATE_STR = 'vectorProduct'
-    ALIAS = 'vecpd'
+    ALIAS = 'vecprd'
 
     def __init__(self, name):
         super().__init__(name)
@@ -203,8 +204,8 @@ class vectorProduct(MathNode):
         normal_node2 = normalize.create(f'{other2.name}_normalize')
         other1.outColor.connect(normal_node1.input)
         other2.outColor.connect(normal_node2.input)
-        normal_node1.output.connect(self.input1)
-        normal_node2.output.connect(self.input2)
+        normal_node1.output.mount(self.input1)
+        normal_node2.output.mount(self.input2)
 
 
 class setRange(MathNode):
@@ -254,12 +255,12 @@ class distanceBetween(MathNode):
         point.connect(target_attr)
 
 
-class Mmultiply(object):
+class MMultiply(object):
     # todo 1：自动适应maya版本，选择不同的节点（适应版本的工作交到具体的节点类，此处只做调用）
     # todo 2：自动根据数值，挑选合适的节点类型进行创建
     # todo 3: 自动连接属性
 
-    # attrribute types:constant,scalar,vector,matrix
+    # attribute types:constant,scalar,vector,matrix
 
     SUPPORTED_DICT = {
         'scalar*raw_scalar': 'multDoubleLinear',  # 常数*单通道属性
@@ -269,8 +270,7 @@ class Mmultiply(object):
 
         'vector*raw_scalar': 'multiplyDivide',  # 常数*向量属性
 
-        'scalar*vector': 'multiplyDivide',  # 单通道属性*向量属性
-        'vector*scalar': 'multiplyDivide',
+        'vector*scalar': 'multiplyDivide', # 单通道属性*向量属性
 
         'vector*vector': 'vectorProduct',
 
@@ -295,20 +295,28 @@ class Mmultiply(object):
         for i in [self.input1, self.input2]:
             if isinstance(i, float) or isinstance(i, int):
                 attr_type.append('raw_scalar')
+                continue
             elif isinstance(i, list) or isinstance(i, tuple):
                 attr_type.append('raw_vector')
-            elif isinstance(i, str):
+                continue
+
+            mattr = None
+            if isinstance(i, str):
                 mattr = MAttribute.create_by_name(i)
             elif isinstance(i, MAttribute):
                 mattr = i
-                if mattr.attr_type in AttrType.ValueType:
-                    attr_type.append('scalar')
-                elif mattr.attr_type in AttrType.CompoundType:
-                    attr_type.append('vector')
-                elif mattr.attr_type == 'matrix':
-                    attr_type.append('matrix')
-                else:
-                    raise RuntimeError(f'Unrecognized attribute:{i}({mattr.attr_type})')
+
+            if not mattr:
+                raise RuntimeError(f'Unrecognized attribute:{i}({mattr.attr_type})')
+
+            if mattr.attr_type in AttrType.ValueType:
+                attr_type.append('scalar')
+            elif mattr.attr_type in AttrType.CompoundType:
+                attr_type.append('vector')
+            elif mattr.attr_type == 'matrix':
+                attr_type.append('matrix')
+            else:
+                raise RuntimeError(f'Unrecognized attribute:{i}({mattr.attr_type})')
         self.input_attr_types = '*'.join(attr_type)
 
     def build(self):
