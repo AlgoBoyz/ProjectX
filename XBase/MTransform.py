@@ -5,12 +5,12 @@ import maya.cmds as mc
 
 from XBase.MNodes import MNode
 from XBase.MShape import MLocatorShape
-from XBase.MConstant import XSpace, WorldUpType, Axis
+from XBase.MConstant import GlobalConfig, WorldUpType, Axis
 
 
 class MTransform(MNode):
     _CREATE_STR = 'transform'
-
+    root_space = GlobalConfig.transform_root
     def __init__(self, name):
         super().__init__(name)
         self.top_group = None
@@ -34,8 +34,8 @@ class MTransform(MNode):
             mc.matchTransform(node, match)
         if pos:
             mc.xform(node, worldSpace=True, translation=pos)
-        if XSpace.transform_root and not under:
-            mc.parent(node,XSpace.transform_root)
+        if cls.root_space and not under:
+            mc.parent(node,cls.root_space)
 
         return cls(node)
 
@@ -190,7 +190,7 @@ class MTransform(MNode):
 
 class MLocator(MTransform):
     _CREATE_STR = 'locator'
-
+    root_space = GlobalConfig.joint_root
     def __init__(self, name, shape):
         super().__init__(name)
         self.shape = MLocatorShape(shape)
@@ -203,8 +203,8 @@ class MLocator(MTransform):
         transform = mc.listRelatives(shape, parent=True)[0]
         instance = cls(transform, shape)
         instance.rename(name)
-        if XSpace.locator_root:
-            instance.set_parent(XSpace.locator_root)
+        if cls.root_space:
+            instance.set_parent(cls.root_space)
         under = kwargs.pop('under', '')
         if under:
             instance.set_parent(under)
@@ -221,7 +221,7 @@ class MLocator(MTransform):
 
 class MJoint(MTransform):
     _CREATE_STR = 'joint'
-    root_space = XSpace.joint_root
+    root_space = GlobalConfig.joint_root
 
 class MTransformList(object):
     MEMBER_TYPE = MTransform

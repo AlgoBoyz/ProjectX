@@ -73,9 +73,8 @@ class MAttribute(object):
 
     def mount(self, other, force=False):
         """
-        other:常数，字符串，字符串列表，数值列表，MAttribute
+        挂载属性，可以挂载常数，常数列表，亦可挂载另一个属性，或者一个属性列表,基本上就是将connectAttr跟setAttr合并起来，方便后续节点图的编写
         """
-        other_node = ''
         if isinstance(other, str):
             if not mc.objExists(other):
                 raise RuntimeError(f'Can not connect attribute:{self.full_name} to {other}(do not exist)!')
@@ -83,7 +82,6 @@ class MAttribute(object):
             logging.info(f'{self.full_name}>>{other}')
         elif isinstance(other, MAttribute):
             mc.connectAttr(self.full_name, other.full_name, force=force)
-            other_node = other.node
             logging.info(f'{self.full_name}>>{other.full_name}')
         elif isinstance(other, list):
             other_type = get_list_types(other)
@@ -91,21 +89,27 @@ class MAttribute(object):
                 for attr in other:
                     if not mc.objExists(attr):
                         raise RuntimeError(f'Attribute{attr} in attribute list:{other} do not exists!')
-                    mc.connectAttr(self.full_name,attr)
+                    mc.connectAttr(self.full_name,attr, force=force)
+                    logging.info(f'{self.full_name}>>{attr}')
             elif other_type == int or other_type == float:
-                mc.setAttr(self.full_name,other,type=self.attr_type)
+                if not self.attr_type in AttrType.CompoundType:
+                    raise RuntimeError(f'Single value attribute can not be set to {other}')
+                mc.setAttr(self.full_name,*other,type=self.attr_type)
+                logging.info(f'{self.full_name}>>{other}')
             else:
                 raise RuntimeError(f'Not supported attribute list:{other}')
         elif isinstance(other,int) or isinstance(other,float):
             if self.attr_type in AttrType.ValueType:
                 mc.setAttr(self.full_name,other)
+                logging.info(f'{self.full_name}>>{other}')
             elif self.attr_type in AttrType.CompoundType:
                 other = [other,other,other]
-                mc.setAttr(self.full_name,other,type=self.attr_type)
-
+                mc.setAttr(self.full_name,*other,type=self.attr_type)
+                logging.info(f'{self.full_name}>>{other}')
+            else:
+                raise RuntimeError(f'Not value type attribute{self.full_name}({self.attr_type}) can not be set to:{other}')
         else:
             raise RuntimeError(f'Not supported attribute to connect')
-        return other_node
 
     def disconnect(self):
         pass
@@ -131,3 +135,36 @@ class MAttribute(object):
                              driverValue=driver_val,
                              value=driven_val)
 
+class AttributeTypeHandler(object):
+    @staticmethod
+    def get_handler(value):
+        if isinstance(value,int) or isinstance(value,float):
+            return ConstantHandler(value)
+        elif isinstance(value,list) or isinstance(value,tuple):
+            return ListHandler(value)
+        elif isinstance(value,str):
+            return StringHandler(value)
+        elif isinstance(value,MAttribute):
+            return MAttributeHandler(value)
+        else:
+            raise RuntimeError(f'Unrecognized attribute:{value}')
+
+class ConstantHandler(object):
+    def __init__(self,value):
+        self.value = value
+    def mount(self,other):
+        pass
+
+class StringHandler(object):
+    def __init__(self,value):
+        self.value = value
+
+
+class ListHandler(object):
+    def __init__(self,value):
+        self.value = value
+
+
+class MAttributeHandler(object):
+    def __init__(self,value):
+        self.value = value

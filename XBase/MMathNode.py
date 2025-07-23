@@ -80,9 +80,7 @@ class addDoubleLinear(MathNode):
 
     def __init__(self, name):
         super().__init__(name)
-        # node labels
-        self.valid_type = [AttrType.ValueType]
-        self.valid_version = []  # empty list if valid in all version
+
 
 
 class multDoubleLinear(MathNode):

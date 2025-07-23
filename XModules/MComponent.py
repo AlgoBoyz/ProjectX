@@ -5,7 +5,7 @@ import maya.cmds as mc
 
 from XBase import *
 from XBase import MTransform as mt
-from XBase.MConstant import AttrType, XSpace, ConditionOperation
+from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation
 from XBase.MTransform import MTripleJointChain
 
 
@@ -55,7 +55,7 @@ class IKComponent(MJointBaseComponent):
         if self.config.pre_build_func:
             self.config.pre_build_func()
         self.cache_grp = mt.MTransform.create(f'{self.alias}_Cache_Grp')
-        XSpace.set_root(self.cache_grp.name)
+        GlobalConfig.set_root(self.cache_grp.name)
         self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp')
         self.ctrl_value_node.lock_attrs('t','r','s',hide=True)
         if self.config.enable_stretch:
@@ -131,7 +131,7 @@ class IKComponent(MJointBaseComponent):
         for element in self._to_clean:
             pass
     def post_build(self):
-        XSpace.reset_root()
+        GlobalConfig.reset_root()
         if self.config.post_build_func:
             self.config.post_build_func()
 

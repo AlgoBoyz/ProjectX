@@ -63,14 +63,14 @@ def dev():
 
 
 def dev_attribute():
+    dev_reset_scene()
     from XBase import MTransform as mt
     from XBase.MNodes import MNode
+    from XBase.MBaseFunctions import arg_match_attr
     jc = mt.MTransform.create('test')
-    # jc.rotateX.set_driven_key(jc.translateX,0,0)
-    # jc.rotateX.set_driven_key(jc.translateX,100,30)
-    jc.translate.multiply(jc.rotate, 'test')
-
-
+    # j2 = mt.MJoint.create('joint_1')
+    # jc.translateX.mount([1,2,3])
+    print(arg_match_attr(1,jc.translateX.full_name))
 def dev_print():
     data = {'name': {
         'pos_array': [1, 2, 3, 4]
