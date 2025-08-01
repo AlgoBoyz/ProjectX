@@ -89,31 +89,31 @@ class MAttribute(object):
                 for attr in other:
                     if not mc.objExists(attr):
                         raise RuntimeError(f'Attribute{attr} in attribute list:{other} do not exists!')
-                    mc.connectAttr(self.full_name,attr, force=force)
+                    mc.connectAttr(self.full_name, attr, force=force)
                     logging.info(f'{self.full_name}>>{attr}')
             elif other_type == int or other_type == float:
                 if not self.attr_type in AttrType.CompoundType:
                     raise RuntimeError(f'Single value attribute can not be set to {other}')
-                mc.setAttr(self.full_name,*other,type=self.attr_type)
+                mc.setAttr(self.full_name, *other, type=self.attr_type)
                 logging.info(f'{self.full_name}>>{other}')
             else:
                 raise RuntimeError(f'Not supported attribute list:{other}')
-        elif isinstance(other,int) or isinstance(other,float):
+        elif isinstance(other, int) or isinstance(other, float):
             if self.attr_type in AttrType.ValueType:
-                mc.setAttr(self.full_name,other)
+                mc.setAttr(self.full_name, other)
                 logging.info(f'{self.full_name}>>{other}')
             elif self.attr_type in AttrType.CompoundType:
-                other = [other,other,other]
-                mc.setAttr(self.full_name,*other,type=self.attr_type)
+                other = [other, other, other]
+                mc.setAttr(self.full_name, *other, type=self.attr_type)
                 logging.info(f'{self.full_name}>>{other}')
             else:
-                raise RuntimeError(f'Not value type attribute{self.full_name}({self.attr_type}) can not be set to:{other}')
+                raise RuntimeError(
+                    f'Not value type attribute{self.full_name}({self.attr_type}) can not be set to:{other}')
         else:
             raise RuntimeError(f'Not supported attribute to connect')
 
     def disconnect(self):
         pass
-
 
     def set(self, value):
         if isinstance(value, int) and self.attr_type in ['double', 'float', 'doubleLinear', 'doubleAngle']:
@@ -135,36 +135,77 @@ class MAttribute(object):
                              driverValue=driver_val,
                              value=driven_val)
 
-class AttributeTypeHandler(object):
-    @staticmethod
-    def get_handler(value):
-        if isinstance(value,int) or isinstance(value,float):
-            return ConstantHandler(value)
-        elif isinstance(value,list) or isinstance(value,tuple):
-            return ListHandler(value)
-        elif isinstance(value,str):
-            return StringHandler(value)
-        elif isinstance(value,MAttribute):
-            return MAttributeHandler(value)
-        else:
-            raise RuntimeError(f'Unrecognized attribute:{value}')
+
+def get_handler(value):
+    if isinstance(value, int) or isinstance(value, float):
+        return ConstantHandler(value)
+    elif isinstance(value, list) or isinstance(value, tuple):
+        return ListHandler(value)
+    elif isinstance(value, str):
+        return StringHandler(value)
+    elif isinstance(value, MAttribute):
+        return MAttributeHandler(value)
+    else:
+        raise RuntimeError(f'Unrecognized attribute type:{value}')
+
 
 class ConstantHandler(object):
-    def __init__(self,value):
+    def __init__(self, value, to_mount: MAttribute):
         self.value = value
-    def mount(self,other):
-        pass
+        self.to_mount = to_mount
+
+    def mount(self):
+        if not self.to_mount.attr_type in AttrType.ValueType:
+            if not self.to_mount.attr_type in AttrType.CompoundType:
+                logging.error(f'ConstantHandler:Not matched type:{self.to_mount.attr_type}')
+                raise RuntimeError(f'Can not mount value:{self.value} to attribute:{self.to_mount.full_name}')
+            value = [self.value, self.value, self.value]
+            self.to_mount.set(value)
+            return True
+        self.to_mount.set(self.value)
+        return True
+
 
 class StringHandler(object):
-    def __init__(self,value):
+    def __init__(self, value, to_mount: MAttribute):
         self.value = value
+        self.to_mount = to_mount
+
+    def mount(self):
+        if self.to_mount.attr_type == AttrType.String:
+            self.to_mount.set(self.value)
+            return True
+        if '.' in self.value:
+            exist = mc.objExists(self.value)
+            if exist:
+                mc.connectAttr(self.value, self.to_mount.full_name)
+                return True
+            else:
+                logging.error(f'StringHandler:Try to connect a not exist attribute:{self.value}')
+                raise RuntimeError(f'Failed to connect to {self.value},attribute do not exist')
+        else:
+            raise RuntimeError(f'Unrecognized Attribute:{self.value}')
 
 
 class ListHandler(object):
-    def __init__(self,value):
+    def __init__(self, value, to_mount: MAttribute):
         self.value = value
+        self.to_mount = to_mount
 
+    def mount(self):
+        lst_type = get_list_types(self.value)
+        if lst_type == int or lst_type == float:
+            if self.to_mount.attr_type in AttrType.CompoundType:
+                self.to_mount.set(self.value)
+            else:
+                raise RuntimeError(f'Failed to mount{self.value} to {self.to_mount.full_name}')
+        elif lst_type == str:
+            for attr in self.value:
+                if not mc.objExists(attr):
+                    logging.error(f'ListHandler:Attribute:{attr} in {self.value} do not exist!')
+                    raise RuntimeError(f'Attribute:{attr} in {self.value} do not exist!')
+                mc.connectAttr(attr,self.to_mount.full_name)
 
 class MAttributeHandler(object):
-    def __init__(self,value):
+    def __init__(self, value):
         self.value = value

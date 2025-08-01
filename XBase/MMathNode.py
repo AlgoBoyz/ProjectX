@@ -167,7 +167,7 @@ class multMatrix(MathNode):
     _CREATE_STR = 'multMatrix'
     __slots__ = ['multMatrix', 'message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState',
                  'binMembership', 'matrixIn', 'matrixSum']
-    ALIAS = 'mltmt'
+    ALIAS = 'mltmtx'
 
     def __init__(self, name):
         super().__init__(name)

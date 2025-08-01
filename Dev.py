@@ -631,7 +631,11 @@ def dev_load_skin_weight():
     msc.set_weight(weight_data, [i for i in range(len(infs))])
 
 
+def dev_ast():
+    from  XBase.MNodeGraph import Lexer
+    txt = 'a.tx + b.ty+z.tz'
+    Lexer(txt).get_tokens()
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_attribute()
+    dev_ast()
