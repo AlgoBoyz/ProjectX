@@ -1,6 +1,8 @@
 import math
 import maya.cmds as mc
 import maya.api.OpenMaya as om
+from libfuturize.fixer_util import is_import_stmt
+
 
 def get_list_types(lst: list):
     if not lst:
@@ -178,6 +180,27 @@ class StrUtils(object):
         chars = [char.capitalize() for char in splited]
         new_string = ' '.join(chars)
         return new_string
+
+def arg_match_attr(arg,attr_name):
+    from XBase.MConstant import AttrType
+    attr_type = mc.getAttr(attr_name,type=True)
+    if attr_type in AttrType.ValueType:
+        if not isinstance(arg,int) or isinstance(arg,float):
+            return False
+        else:
+            return True
+    elif attr_type in AttrType.CompoundType:
+        if isinstance(arg,list) or isinstance(arg,tuple):
+            if len(arg) == 3:
+                return True
+            else:
+                return False
+        elif isinstance(arg,int) or isinstance(arg,float):
+            return True
+        else:
+            return False
+    else:
+        return False
 
 class OMUtils(object):
 

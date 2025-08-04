@@ -5,11 +5,12 @@ import maya.cmds as mc
 
 from XBase.MNodes import MNode
 from XBase.MShape import MLocatorShape
-from XBase.MConstant import XSpace, WorldUpType, Axis
+from XBase.MConstant import GlobalConfig, WorldUpType, Axis, ParentType
 
 
 class MTransform(MNode):
     _CREATE_STR = 'transform'
+    root_space = GlobalConfig.transform_root
 
     def __init__(self, name):
         super().__init__(name)
@@ -34,8 +35,8 @@ class MTransform(MNode):
             mc.matchTransform(node, match)
         if pos:
             mc.xform(node, worldSpace=True, translation=pos)
-        if XSpace.transform_root and not under:
-            mc.parent(node,XSpace.transform_root)
+        if cls.root_space and not under:
+            mc.parent(node, cls.root_space)
 
         return cls(node)
 
@@ -75,6 +76,24 @@ class MTransform(MNode):
         else:
             raise RuntimeError(f'Failed to retrieve parent of {self.name}\nresult:{p}')
 
+    def create_loc(self, parent_type=ParentType.parent_constraint):
+
+        loc_name = f'{self.name}_Loc'
+        if not mc.objExists(loc_name):
+            loc = MLocator.create(loc_name)
+        else:
+            loc = MLocator(loc_name, f'{loc_name}Shape')
+
+        loc.match(self)
+
+        if parent_type == ParentType.hierarchy:
+            loc.set_parent(self)
+        elif parent_type == ParentType.point_constraint:
+            mc.pointConstraint(self.name, loc.name)
+        elif parent_type == ParentType.parent_constraint:
+            mc.parentConstraint(self.name, loc.name)
+        return loc
+
     def set_parent(self, parent):
         if parent is None or parent == 'None':
             if self.parent is None:
@@ -112,17 +131,19 @@ class MTransform(MNode):
 
     def unparent(self):
         pass
-    def lock_attrs(self,*attr_prefix,vis=True,hide=True):
-        for axis in ['x','y','z']:
+
+    def lock_attrs(self, *attr_prefix, vis=True, hide=True):
+        for axis in ['x', 'y', 'z']:
             for prefix in attr_prefix:
                 if hide:
-                    mc.setAttr(f'{self}.{prefix}{axis}',lock=True,keyable=False)
+                    mc.setAttr(f'{self}.{prefix}{axis}', lock=True, keyable=False)
                     if vis:
                         mc.setAttr(f'{self}.v', lock=True, keyable=False)
                 else:
                     mc.setAttr(f'{self}.{prefix}{axis}', lock=True)
                     if vis:
                         mc.setAttr(f'{self}.v', lock=True)
+
     def freeze(self, translate=True, rotate=True, scale=True):
         mc.makeIdentity(self.name, apply=True, translate=translate, rotate=rotate, scale=scale)
 
@@ -162,7 +183,7 @@ class MTransform(MNode):
         return mat
 
     def reorient(self, aim_axis, aim_vec, up_axis, up_vec):
-        from XBase.MBaseFunctions import normalize_vector,cross_product
+        from XBase.MBaseFunctions import normalize_vector, cross_product
         axis_index_look_up = {Axis.X.name: 0, Axis.Y.name: 1, Axis.Z.name: 2}
         lst = [i for i in axis_index_look_up.values()]
         mat = self.get_world_matrix()
@@ -190,6 +211,7 @@ class MTransform(MNode):
 
 class MLocator(MTransform):
     _CREATE_STR = 'locator'
+    root_space = GlobalConfig.joint_root
 
     def __init__(self, name, shape):
         super().__init__(name)
@@ -203,8 +225,8 @@ class MLocator(MTransform):
         transform = mc.listRelatives(shape, parent=True)[0]
         instance = cls(transform, shape)
         instance.rename(name)
-        if XSpace.locator_root:
-            instance.set_parent(XSpace.locator_root)
+        if cls.root_space:
+            instance.set_parent(cls.root_space)
         under = kwargs.pop('under', '')
         if under:
             instance.set_parent(under)
@@ -221,7 +243,8 @@ class MLocator(MTransform):
 
 class MJoint(MTransform):
     _CREATE_STR = 'joint'
-    root_space = XSpace.joint_root
+    root_space = GlobalConfig.joint_root
+
 
 class MTransformList(object):
     MEMBER_TYPE = MTransform
@@ -305,10 +328,12 @@ class MJointSet(MTransformList):
     def __len__(self):
         return len(self.node_names)
 
+
 class MJointChain(MJointSet):
 
     def __init__(self, joints: list):
         super().__init__(joints)
+
     def __getitem__(self, idx) -> Union[MJoint, 'MJointChain']:
         if isinstance(idx, slice):
             return MJointChain(self.nodes[idx])
@@ -428,16 +453,18 @@ class MTripleJointChain(MJointChain):
     def vec_bc(self):
         vec_bc = self[2].world_pos - self[1].world_pos
         return vec_bc
+
     @property
     def total_length(self):
-        return self.vec_ab.length()+self.vec_bc.length()
+        return self.vec_ab.length() + self.vec_bc.length()
+
     @property
-    def pv_vec(self)->om.MVector:
-        '''
+    def pv_vec(self) -> om.MVector:
+        """
         a*b = |a|*|b|*cos
-        --> a*b/|b| = |a|*cos
-        --> 点乘结果除以b的模长等于a在b上的投影长度，再除以b的模长，等于投影在b上占的比例
-        '''
+        → a*b/|b| = |a|*cos
+        → 点乘结果除以b的模长等于a在b上的投影长度，再除以b的模长，等于投影在b上占的比例
+        """
 
         factor = (self.vec_ab * self.vec_ac) / self.vec_ac.length() ** 2
         vec_db = self.vec_ab - self.vec_ac * factor
@@ -447,10 +474,10 @@ class MTripleJointChain(MJointChain):
     @property
     def normal(self):
         from XBase.MBaseFunctions import cross_product
-        return cross_product(self.vec_ab,self.vec_bc)
+        return cross_product(self.vec_ab, self.vec_bc)
 
     def get_pole_vec_pos(self, multiplier=2):
-        vec :om.MVector= multiplier * self.pv_vec
+        vec: om.MVector = multiplier * self.pv_vec
         pv_pos = self[1].world_pos + vec
         return pv_pos
 

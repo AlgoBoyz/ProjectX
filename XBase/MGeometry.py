@@ -1,8 +1,4 @@
 import logging
-import os.path
-from typing import Optional
-
-from maya.cmds import polyPlane
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om

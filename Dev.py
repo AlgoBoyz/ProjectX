@@ -1,16 +1,13 @@
-from importlib import reload
-import os.path
 import sys
+import logging
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-import XUI.XMainWindow
-
-import datetime
-
-from XBase.MDeformer import MSkinCluster
 from XBase.MTransform import MJoint
+from LoggingSetup import setup_global_logger
+
+setup_global_logger()
 
 
 def standalone():
@@ -24,6 +21,7 @@ def dev_reset_scene():
 
 
 def dev_reload():
+    from importlib import reload
     to_reload = []
     for key, value in sys.modules.items():
         if 'ProjectX' in str(value):
@@ -65,12 +63,14 @@ def dev():
 
 
 def dev_attribute():
+    dev_reset_scene()
     from XBase import MTransform as mt
     from XBase.MNodes import MNode
-    MNode.create()
-    # jc = mt.MTransform.create('test')
-    # jc.rotateX.set_driven_key(jc.translateX,0,0)
-    # jc.rotateX.set_driven_key(jc.translateX,100,30)
+    from XBase.MBaseFunctions import arg_match_attr
+    jc = mt.MTransform.create('test')
+    # j2 = mt.MJoint.create('joint_1')
+    # jc.translateX.mount([1,2,3])
+    print(arg_match_attr(1, jc.translateX.full_name))
 
 
 def dev_print():
@@ -107,14 +107,16 @@ def dev_component():
     # dev_reset_scene()
     from XModules import MComponent
     from XBase import MTransform as mt
-    jc = mt.MTripleJointChain(['jnt1', 'jnt2', 'jnt3'])
+    # jc = mt.MTripleJointChain.create(['jnt1', 'jnt2', 'jnt3'])
     # jc[1].tx.set(10)
     # jc[2].tx.set(10)
     # jc[0].ry.set(30)
     # jc[1].ry.set(-60)
     # jc.freeze()
-    cp = MComponent.IKComponent('LF_Arm_01', jc)
+    jc = mt.MTripleJointChain(['jnt1', 'jnt2', 'jnt3'])
+    cp = MComponent.FKComponent('LF_Arm_01', jc)
     cp.build()
+
 
 def dev_create_skinned_mesh():
     from XBase import MTransform as mt
@@ -202,9 +204,6 @@ def dev_template():
     # jnts = dev_create_joints(num=3, alias='Test', offset=10, parent=True, attr='tx')
     # for i, jnt in enumerate(jnts):
     #     mc.rename(jnt, names[i])
-    from XModules.MComponentTemplate import IKComponentData
-    data = IKComponentData.load_from_scene()
-    data.save_data('test_joints')
 
 
 def dev_build_node_slot():
@@ -318,7 +317,7 @@ def dev_create_psd_locs():
     # mc.file(path, i=True)
     import XBase.MTransform as mt
     from XBase.MMathNode import vectorProduct
-    jnt_names = ['Hip','Knee','Ankle','Shoulder','Elbow','Wrist']
+    jnt_names = ['Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist']
     dot_value_collect_node = mt.MTransform('dot_value_collect')
     for side in ['L', 'R']:
         factor = 1 if side == 'R' else -1
@@ -342,7 +341,7 @@ def dev_create_psd_locs():
                                                         )
 
                     par = origin_tip_loc.insert_parent(f'{origin_tip_loc.name}_Offset')
-                    par.attr(f'r{axis}').set( angle)
+                    par.attr(f'r{axis}').set(angle)
 
                     origin_tip_loc.tx.set(factor * 100.0)
                     axis_vec = origin_tip_loc.shape.worldPosition.subtract(origin_loc.shape.worldPosition, 'test')
@@ -583,58 +582,65 @@ def dev_skin_weight():
     path = r'F:\TMP\test.fbx'
     if not mc.pluginInfo("fbxmaya", q=True, loaded=True):
         mc.loadPlugin("fbxmaya")
-    mc.file(path, i=True,type='FBX',ignoreVersion=True)
+    mc.file(path, i=True, type='FBX', ignoreVersion=True)
     from XBase.MDeformer import MSkinCluster
-    from XBase.MBaseFunctions import compress_list,decompress_lst
+    from XBase.MBaseFunctions import compress_list, decompress_lst
 
-    sc_name = [i for i in mc.listHistory('F01_MacheLotus01_UpBody_HDShape') if mc.objectType(i)=='skinCluster'][0]
-    msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape',sc_name)
+    sc_name = [i for i in mc.listHistory('F01_MacheLotus01_UpBody_HDShape') if mc.objectType(i) == 'skinCluster'][0]
+    msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape', sc_name)
 
-    weight=msc.get_weight_array()
+    weight = msc.get_weight_array()
     compressed_weight = compress_list(list(weight))
     # decompressed_weight = decompress_lst(compressed_weight)
     inf_matrix = [MJoint(i).worldMatrix.value for i in msc.influences]
     inf_parens = [MJoint(i).parent.name for i in msc.influences]
-    with open('./test.txt','w') as f:
-        f.write(str([sc_name,msc.influences,inf_parens,inf_matrix,compressed_weight]))
+    with open('./test.txt', 'w') as f:
+        f.write(str([sc_name, msc.influences, inf_parens, inf_matrix, compressed_weight]))
+
 
 def dev_load_skin_weight():
     dev_reset_scene()
     import ast
-    from XBase.MBaseFunctions import compress_list,decompress_lst,OMUtils
+    from XBase.MBaseFunctions import compress_list, decompress_lst, OMUtils
     from XBase.MTransform import MJoint
     from XBase.MDeformer import MSkinCluster
     data_path = r'F:\Code\Python\ProjectX\test.txt'
     path = r'F:\TMP\cloth_geo.fbx'
     if not mc.pluginInfo("fbxmaya", q=True, loaded=True):
         mc.loadPlugin("fbxmaya")
-    mc.file(path, i=True,type='FBX',ignoreVersion=True)
-    with open(data_path,'r') as f:
+    mc.file(path, i=True, type='FBX', ignoreVersion=True)
+    with open(data_path, 'r') as f:
         data = ast.literal_eval(f.read())
-        infs = [i.replace('_output','') for i in data[1]]
+        infs = [i.replace('_output', '') for i in data[1]]
         parents = data[2]
         matrices = data[3]
         weight = decompress_lst(data[4])
-    for i,inf in enumerate(infs):
+    for i, inf in enumerate(infs):
         jnt = MJoint.create(inf)
-        mc.xform(jnt.name,worldSpace=True,matrix=matrices[i])
+        mc.xform(jnt.name, worldSpace=True, matrix=matrices[i])
         jnt.freeze()
-    for i,jnt in enumerate(infs):
+    for i, jnt in enumerate(infs):
         try:
             jnt_mt = MJoint(jnt)
-            jnt_mt.set_parent(parents[i].replace('_output',''))
+            jnt_mt.set_parent(parents[i].replace('_output', ''))
         except:
             pass
-    sc = mc.skinCluster(*infs,'F01_MacheLotus01_UpBody_HD')[0]
-    msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape',sc)
-    mapper = [msc.skin_fn.indexForInfluenceObject(OMUtils.get_dag_path(i)) for i in [jnt.replace('_output','') for jnt in infs]]
+    sc = mc.skinCluster(*infs, 'F01_MacheLotus01_UpBody_HD')[0]
+    msc = MSkinCluster('F01_MacheLotus01_UpBody_HDShape', sc)
+    mapper = [msc.skin_fn.indexForInfluenceObject(OMUtils.get_dag_path(i)) for i in
+              [jnt.replace('_output', '') for jnt in infs]]
     weight_data = decompress_lst(weight)
     # final_weight = msc.rearrange_weight(weight_data,mapper)
-    msc.set_weight(weight_data,[i for i in range(len(infs))])
+    msc.set_weight(weight_data, [i for i in range(len(infs))])
+
+
+def dev_ast():
+    from XBase.MNodeGraph import Lexer
+    txt = 'a.tx + b.ty+z.tz'
+    Lexer(txt).get_tokens()
+
 
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_component()
-    # dev_load_skin_weight()
-
+    dev_ast()
