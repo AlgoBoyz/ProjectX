@@ -19,7 +19,16 @@ def dev_reset_scene():
     mc.file(newFile=True, force=True)
     # mc.viewSet(front=True)
 
-
+def dev_create_ik_joints(names=None):
+    from XBase import MTransform as mt
+    names = ['jnt1', 'jnt2', 'jnt3'] if not names else names
+    jc = mt.MTripleJointChain.create(names)
+    jc[1].tx.set(10)
+    jc[2].tx.set(10)
+    jc[0].ry.set(30)
+    jc[1].ry.set(-60)
+    jc.freeze()
+    return jc
 def dev_reload():
     from importlib import reload
     to_reload = []
@@ -104,17 +113,10 @@ def dev_ui():
 
 
 def dev_component():
-    # dev_reset_scene()
+    dev_reset_scene()
     from XModules import MComponent
-    from XBase import MTransform as mt
-    # jc = mt.MTripleJointChain.create(['jnt1', 'jnt2', 'jnt3'])
-    # jc[1].tx.set(10)
-    # jc[2].tx.set(10)
-    # jc[0].ry.set(30)
-    # jc[1].ry.set(-60)
-    # jc.freeze()
-    jc = mt.MTripleJointChain(['jnt1', 'jnt2', 'jnt3'])
-    cp = MComponent.FKComponent('LF_Arm_01', jc)
+    jc = dev_create_ik_joints()
+    cp = MComponent.IKFKComponent('LF_Arm_01', jc)
     cp.build()
 
 
@@ -643,4 +645,4 @@ def dev_ast():
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_ast()
+    dev_component()

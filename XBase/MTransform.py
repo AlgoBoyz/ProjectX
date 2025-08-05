@@ -169,7 +169,7 @@ class MTransform(MNode):
         self.match_pos(pos_after)
 
     def set_visibility(self, visibility: bool):
-        pass
+        mc.setAttr(f'{self.name}.v',visibility)
 
     def get_vector_to(self, other):
         if isinstance(other, str):
@@ -269,7 +269,7 @@ class MTransformList(object):
         from XBase.MBaseFunctions import get_list_types
         lst_types = get_list_types(self.node_names)
         if isinstance(lst_types, list) and len(lst_types) > 1:
-            raise ValueError(f'Input joint list:{self.nodes} has more than one type:{lst_types}')
+            raise ValueError(f'Input node list:{self.nodes} has more than one type:{lst_types}')
         if lst_types == str:
             self.nodes = [self.MEMBER_TYPE(name) for name in self.node_names]
         elif lst_types == self.MEMBER_TYPE:
@@ -330,7 +330,7 @@ class MJointSet(MTransformList):
 
 
 class MJointChain(MJointSet):
-
+    # todo :修改成员的名字后，没有同步更新,需要改进
     def __init__(self, joints: list):
         super().__init__(joints)
 
@@ -354,6 +354,15 @@ class MJointChain(MJointSet):
         normal = cross_product(vec1, vec2)
         return normal
 
+    @classmethod
+    def duplicate(cls,other):
+        pass
+
+    def rename_chain(self,new_names):
+        for i,jnt in enumerate(self):
+            jnt.rename(new_names[i])
+        self.node_names[:len(new_names)] = new_names
+        self.nodes = [MJoint(i) for i in self.node_names]
     def update_chain(self):
         self.unparent_all()
         self.parent_all()
@@ -436,7 +445,7 @@ class MTripleJointChain(MJointChain):
     def create(cls, joints: list[str]) -> 'MTripleJointChain':
         if not len(joints) == 3:
             raise RuntimeError(f'Can not initialize MTripleJointChain from {joints} due to length of joints is not 3')
-        instance = super().create(joints)
+        super().create(joints)
         return cls(joints)
 
     @property

@@ -1,10 +1,11 @@
 import logging
-from typing import Union
+from typing import Union,Optional
 
 import maya.cmds as mc
 
 from XBase import MTransform as mt
 from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType
+from XBase.MTransform import MJointChain, MTripleJointChain
 
 
 class Component(object):
@@ -37,6 +38,8 @@ class IKComponent(object):
             self.joint_chain = joint_chain
         elif isinstance(joint_chain, list) and len(joint_chain) == 3:
             self.joint_chain = mt.MTripleJointChain(joint_chain)
+        elif isinstance(joint_chain,mt.MJointChain) and joint_chain.len ==3:
+            self.joint_chain = mt.MTripleJointChain(joint_chain.node_names)
         else:
             raise RuntimeError(f'Failed to initialize IKComponent')
 
@@ -102,7 +105,6 @@ class IKComponent(object):
 
         # graph connections
         # todo:为了加快项目开发，临时使用手动创建节点的形式，等自动连接节点的项目完成后重构
-        from XBase.MConstant import Sign
         from XBase.MMathNode import distanceBetween, multDoubleLinear, condition, blendColors
         mult_factor = 1 if self.joint_chain[1].translateX.value > 0 else -1
         logging.info(f'Multiply factor:{mult_factor};{self.joint_chain[1]}.tx = {self.joint_chain[1].translateX.value}')
@@ -144,7 +146,6 @@ class IKComponent(object):
             self.fst_jnt_loc = self.joint_chain[0].create_loc(parent_type=ParentType.point_constraint)
         # graph connections
         # todo:为了加快项目开发，临时使用手动创建节点的形式，等自动连接节点的项目完成后重构
-        from XBase.MConstant import Sign
         from XBase.MMathNode import distanceBetween, blendColors
         distance_ap_node = distanceBetween.create(f'{ik_lock_alias}_{distanceBetween.ALIAS}')
         distance_pc_node = distanceBetween.create(f'{ik_lock_alias}_{distanceBetween.ALIAS}')
@@ -213,8 +214,7 @@ class FKComponent(object):
     def _create_fk_ctrls(self):
         for i, jnt in enumerate(self.joint_chain.nodes):
             ctrl_name = f'{jnt.name}_Ctrl'
-            print(ctrl_name)
-            ctrl = self.create_fk_ctrl(ctrl_name)
+            ctrl = self.create_ctrl(ctrl_name)
             ctrl_mt = mt.MTransform(ctrl)
             ctrl_mt.match(jnt)
             self.fk_ctrls.append(ctrl_mt)
@@ -236,9 +236,75 @@ class FKComponent(object):
             self.config.post_build_func()
 
     @staticmethod
-    def create_fk_ctrl(name):
+    def create_ctrl(name):
         ctrl = mc.circle(name=name)[0]
         return ctrl
+
+class IKFKComponentConfig(object):
+    def __init__(self):
+        self.pre_build_func = None
+        self.post_build_func = None
+        self.ik_config = IKComponentConfig()
+        self.fk_config = FKComponentConfig()
+
+class IKFKComponent(object):
+
+    def __init__(self,alias,joint_chain:mt.MJointChain,config = IKFKComponentConfig()):
+        self.alias = alias
+        self.main_joint_chain = joint_chain
+        self.config = config
+        self.ik_joint_chain:Optional[MJointChain] = None
+        self.fk_joint_chain:Optional[MJointChain] = None
+        self.ik_component = None
+        self.fk_component = None
+
+    def build(self):
+        self.pre_build()
+        self._create_ik_fk_joints()
+        self._create_blend()
+        self._create_component()
+    def pre_build(self):
+        if self.config.pre_build_func:
+            self.config.pre_build_func()
+        self.cache_grp = mt.MTransform.create(f'{self.alias}_Cache_Grp')
+        GlobalConfig.set_root(self.cache_grp.name)
+        self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp')
+        self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
+        self.ctrl_value_node.add_attr(attr_name='IKFKSwitch',at='float',minValue=0,maxValue=1,keyable=True)
+
+    def _create_ik_fk_joints(self):
+        chains = []
+        for suffix in ['IK','FK']:
+            new_chain = mt.MJointChain(mc.duplicate(self.main_joint_chain[0],renameChildren=True))
+            chains.append(new_chain)
+            new_names = []
+            for i,jnt in enumerate(new_chain):
+                new_name = f'{self.alias}_{suffix}_{i+1:02d}_Jnt'
+                jnt.rename(new_name,parent_instance=new_chain)
+                new_names.append(new_name)
+                jnt.match(self.main_joint_chain[i])
+                if i == 0:
+                    jnt.set_visibility(False)
+                    jnt.insert_parent(f'{self.alias}_{suffix}_Jnts_Grp')
+            new_chain.rename_chain(new_names)
+        self.ik_joint_chain = chains[0]
+        self.fk_joint_chain = chains[1]
+
+    def _create_blend(self):
+        from XBase.MMathNode import blendColors
+        for i,jnt in enumerate(self.main_joint_chain):
+            for attr in ['t','r','s']:
+                blend_node = blendColors.create(f'{jnt.name}_{attr}_{blendColors.ALIAS}')
+                self.ik_joint_chain[i].attr(f'{attr}').mount(blend_node.color1)
+                self.fk_joint_chain[i].attr(f'{attr}').mount(blend_node.color2)
+                blend_node.blender.mount(self.ctrl_value_node.IKFKSwitch,inverse=True)
+                blend_node.output.mount(jnt.attr(attr))
+
+    def _create_component(self):
+        self.ik_component = IKComponent(f'{self.alias}_IK',self.ik_joint_chain.node_names,self.config.ik_config)
+        self.ik_component.build()
+        self.fk_component = FKComponent(f'{self.alias}_FK',self.fk_joint_chain,self.config.fk_config)
+        self.fk_component.build()
 
 
 class SplineIKComponentConfig(object):
@@ -257,15 +323,7 @@ class SplineIKComponentConfig(object):
         self.attr_type = AttrType.Float3
 
 
-class BlendComponent(object):
-
-    def __init__(self, alias, joint_chain):
-        super().__init__()
-
 
 class SplineIKComponent(Component):
     pass
 
-
-class IKFKComponent(Component):
-    pass

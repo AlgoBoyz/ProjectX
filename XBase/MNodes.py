@@ -217,11 +217,14 @@ class MNode(VirtualNode):
     def add_to_set(self, set_name):
         pass
 
-    def rename(self, new_name):
-
+    def rename(self, new_name,parent_instance=None):
+        old_name = self.name
         mc.rename(self.name, new_name)
         self.name = new_name
-
+        if parent_instance:
+            name_idx = parent_instance.node_names.index(old_name)
+            parent_instance.node_names[name_idx] = new_name
+            parent_instance.nodes[name_idx] = parent_instance.MEMBER_TYPE(new_name)
     def attr(self, item):
 
         return MAttribute(self.name, item)
