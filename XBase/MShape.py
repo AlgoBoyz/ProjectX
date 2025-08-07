@@ -1,45 +1,58 @@
+import maya.cmds as mc
+import maya.api.OpenMaya as om
+
+from XBase.MData import MCurveData
 from XBase.MNodes import MNode, MAttribute
 
+class VirtualShape(object):
 
-class MShapeNode(object):
+    __slots__ = ['hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection', 'publishedNodeInfo', 'publishedNode', 'isHierarchicalNode', 'publishedNodeType', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode', 'templateVersion', 'uiTreatment', 'customTreatment', 'creator', 'creationDate', 'containerType', 'boundingBox', 'boundingBoxMin', 'boundingBoxMinX', 'boundingBoxMinY', 'boundingBoxMinZ', 'boundingBoxMax', 'boundingBoxMaxX', 'boundingBoxMaxY', 'boundingBoxMaxZ', 'boundingBoxSize', 'boundingBoxSizeX', 'boundingBoxSizeY', 'boundingBoxSizeZ', 'center', 'boundingBoxCenterX', 'boundingBoxCenterY', 'boundingBoxCenterZ', 'matrix', 'inverseMatrix', 'worldMatrix', 'worldInverseMatrix', 'parentMatrix', 'parentInverseMatrix', 'visibility', 'intermediateObject', 'template', 'instObjGroups', 'objectGroups', 'objectGrpCompList', 'objectGroupId', 'objectGrpColor', 'objectColorRGB', 'objectColorR', 'objectColorG', 'objectColorB', 'wireColorRGB', 'wireColorR', 'wireColorG', 'wireColorB', 'useObjectColor', 'objectColor', 'drawOverride', 'overrideDisplayType', 'overrideLevelOfDetail', 'overrideShading', 'overrideTexturing', 'overridePlayback', 'overrideEnabled', 'overrideVisibility', 'hideOnPlayback', 'overrideRGBColors', 'overrideColor', 'overrideColorRGB', 'overrideColorR', 'overrideColorG', 'overrideColorB', 'overrideColorA', 'lodVisibility', 'selectionChildHighlighting', 'renderInfo', 'identification', 'layerRenderable', 'layerOverrideColor', 'renderLayerInfo', 'renderLayerId', 'renderLayerRenderable', 'renderLayerColor', 'ghosting', 'ghostingMode', 'ghostCustomSteps', 'ghostPreFrames', 'ghostPostFrames', 'ghostsStep', 'ghostFrames', 'ghostOpacityRange', 'ghostFarOpacity', 'ghostNearOpacity', 'ghostColorPre', 'ghostColorPreR', 'ghostColorPreG', 'ghostColorPreB', 'ghostColorPost', 'ghostColorPostR', 'ghostColorPostG', 'ghostColorPostB', 'ghostDriver', 'ghostUseDriver', 'renderType', 'renderVolume', 'visibleFraction', 'hardwareFogMultiplier', 'motionBlur', 'visibleInReflections', 'visibleInRefractions', 'castsShadows', 'receiveShadows', 'asBackground', 'maxVisibilitySamplesOverride', 'maxVisibilitySamples', 'geometryAntialiasingOverride', 'antialiasingLevel', 'shadingSamplesOverride', 'shadingSamples', 'maxShadingSamples', 'volumeSamplesOverride', 'volumeSamples', 'depthJitter', 'ignoreSelfShadowing', 'primaryVisibility', 'referenceObject', 'compInstObjGroups', 'compObjectGroups', 'compObjectGrpCompList', 'compObjectGroupId', 'componentTags', 'componentTagName', 'componentTagContents', 'instMaterialAssign', 'pickTexture', 'tweak', 'relativeTweak', 'controlPoints', 'xValue', 'yValue', 'zValue', 'weights', 'tweakLocation', 'blindDataNodes', 'uvPivot', 'uvPivotX', 'uvPivotY', 'uvSet', 'uvSetName', 'uvSetPoints', 'uvSetPointsU', 'uvSetPointsV', 'uvSetTweakLocation', 'currentUVSet', 'displayImmediate', 'displayColors', 'displayColorChannel', 'currentColorSet', 'colorSet', 'colorName', 'clamped', 'representation', 'colorSetPoints', 'colorSetPointsR', 'colorSetPointsG', 'colorSetPointsB', 'colorSetPointsA', 'header', 'create', 'local', 'lineWidth', 'worldSpace', 'worldNormal', 'worldNormalX', 'worldNormalY', 'worldNormalZ', 'form', 'degree', 'spans', 'editPoints', 'xValueEp', 'yValueEp', 'zValueEp', 'cached', 'inPlace', 'dispCV', 'dispEP', 'dispHull', 'dispCurveEndPoints', 'dispGeometry', 'tweakSize', 'minMaxValue', 'alwaysDrawOnTop', 'minValue', 'maxValue', 'hiddenInOutliner', 'useOutlinerColor', 'outlinerColor', 'outlinerColorR', 'outlinerColorG', 'outlinerColorB', 'underWorldObject', 'localPosition', 'localPositionX', 'localPositionY', 'localPositionZ', 'worldPosition', 'worldPositionX', 'worldPositionY', 'worldPositionZ', 'localScale', 'localScaleX', 'localScaleY', 'localScaleZ']
+
+
+class MShapeNode(VirtualShape):
 
     def __init__(self, shape_name):
         self.shape_name = shape_name
 
     def __getattr__(self, item):
-        print(item)
         return MAttribute(self.shape_name, item)
 
-
+    def get_shape_data(self):
+        raise NotImplemented
 class MLocatorShape(MShapeNode):
-    __slots__ = ['hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
-                 'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
-                 'templateVersion', 'uiTreatment', 'customTreatment', 'creator', 'creationDate', 'containerType',
-                 'boundingBox', 'boundingBoxMin', 'boundingBoxMinX', 'boundingBoxMinY', 'boundingBoxMinZ',
-                 'boundingBoxMax', 'boundingBoxMaxX', 'boundingBoxMaxY', 'boundingBoxMaxZ', 'boundingBoxSize',
-                 'boundingBoxSizeX', 'boundingBoxSizeY', 'boundingBoxSizeZ', 'center', 'boundingBoxCenterX',
-                 'boundingBoxCenterY', 'boundingBoxCenterZ', 'matrix', 'inverseMatrix', 'worldMatrix',
-                 'worldInverseMatrix', 'parentMatrix', 'parentInverseMatrix', 'visibility', 'intermediateObject',
-                 'template', 'instObjGroups', 'objectColorRGB', 'objectColorR', 'objectColorG', 'objectColorB',
-                 'wireColorRGB', 'wireColorR', 'wireColorG', 'wireColorB', 'useObjectColor', 'objectColor',
-                 'drawOverride', 'overrideDisplayType', 'overrideLevelOfDetail', 'overrideShading', 'overrideTexturing',
-                 'overridePlayback', 'overrideEnabled', 'overrideVisibility', 'hideOnPlayback', 'overrideRGBColors',
-                 'overrideColor', 'overrideColorRGB', 'overrideColorR', 'overrideColorG', 'overrideColorB',
-                 'overrideColorA', 'lodVisibility', 'selectionChildHighlighting', 'renderInfo', 'identification',
-                 'layerRenderable', 'layerOverrideColor', 'renderLayerInfo', 'ghosting', 'ghostingMode',
-                 'ghostCustomSteps', 'ghostPreFrames', 'ghostPostFrames', 'ghostsStep', 'ghostFrames',
-                 'ghostOpacityRange', 'ghostFarOpacity', 'ghostNearOpacity', 'ghostColorPre', 'ghostColorPreR',
-                 'ghostColorPreG', 'ghostColorPreB', 'ghostColorPost', 'ghostColorPostR', 'ghostColorPostG',
-                 'ghostColorPostB', 'ghostDriver', 'ghostUseDriver', 'hiddenInOutliner', 'useOutlinerColor',
-                 'outlinerColor', 'outlinerColorR', 'outlinerColorG', 'outlinerColorB', 'renderType', 'renderVolume',
-                 'visibleFraction', 'hardwareFogMultiplier', 'motionBlur', 'visibleInReflections',
-                 'visibleInRefractions', 'castsShadows', 'receiveShadows', 'asBackground',
-                 'maxVisibilitySamplesOverride', 'maxVisibilitySamples', 'geometryAntialiasingOverride',
-                 'antialiasingLevel', 'shadingSamplesOverride', 'shadingSamples', 'maxShadingSamples',
-                 'volumeSamplesOverride', 'volumeSamples', 'depthJitter', 'ignoreSelfShadowing', 'primaryVisibility',
-                 'referenceObject', 'compInstObjGroups', 'componentTags', 'instMaterialAssign', 'pickTexture',
-                 'underWorldObject', 'localPosition', 'localPositionX', 'localPositionY', 'localPositionZ',
-                 'worldPosition', 'localScale', 'localScaleX', 'localScaleY', 'localScaleZ']
 
     def __init__(self, shape_name):
         super().__init__(shape_name)
+
+
+
+class MNurbsCurveShape(MShapeNode):
+
+    def __init__(self, shape_name):
+        MShapeNode.__init__(self,shape_name)
+        self._check_curve()
+        self.curve_data = MCurveData.load_from_node(shape_name)
+
+    def _check_curve(self):
+        node_type = mc.nodeType(self.shape_name)
+        if node_type != 'nurbsCurve':
+            raise RuntimeError(f'{self.shape_name} is not a nurbsCurve!')
+        if not mc.objExists(f'{self.shape_name}.cv[*]'):
+            raise RuntimeError(f'{self.shape_name} may has not points,please check it again.')
+
+    @property
+    def points(self):
+        pos = mc.xform(f'{self.name}.cv[*]', q=True, worldSpace=True, translation=True)
+        if len(pos) == 0:
+            raise RuntimeError(f'{self.name} has not points!')
+        pos_array = [pos[i:i + 3] for i in range(0, len(pos), 3)]
+        return pos_array
+
+    def set_color(self, color):
+        pass
+
+    def set_scale(self, scale_factor):
+        pass
+
+    def set_rotate(self, axis, degree):
+        pass

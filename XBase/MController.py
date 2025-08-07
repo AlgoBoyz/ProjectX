@@ -7,8 +7,9 @@ from XBase.MConstant import PROJECT_BASE_DIR
 
 class MController(object):
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, transform,shape):
+        self.transform = mt.MTransform(transform)
+        self.shape = shape
 
     @classmethod
     def create(cls, name, prototype_name):

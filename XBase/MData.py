@@ -1,108 +1,76 @@
 import os
+from idlelib.outwin import file_line_pats
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 import maya.api.OpenMayaAnim as oman
 from maya.api.OpenMayaAnim import MFnSkinCluster
+from maya.app.renderSetup.model.typeIDs import override
 
-from .MBaseFunctions import clamp_list
-from .MNodes import MNode
-from .MConstant import PROJECT_BASE_DIR, Axis
+from XBase.MConstant import PROJECT_BASE_DIR, Axis
+from XBase.MBaseFunctions import check_type,check_exist,OMUtils
 from XTools.XFileTool import JsonFile
 
 
 class MCurveData(object):
     DATA_DIR = os.path.join(PROJECT_BASE_DIR, 'res', 'GeoData', 'NurbsCurve')
 
-    def __init__(self, name):
-        self.name = name
-        self.pos_array = None
-        self.pos_vec_array = None
-        self.knots = None
-        self.periodic = None
+    def __init__(self, data:dict):
+        self.data = data
+        self.name = ''
+        self.pos_array = []
+        self.pos_vec_array = []
+        self.knots = []
+        self.periodic = True
         self.degree = -1
         self.normal_vec = Axis.X
-        self.data = None
 
-        self.attrs = ['name', 'pos_array', 'knots', 'periodic', 'degree', 'normal_vec']
-
+        self.attrs = ['name', 'pos_array', 'knots', 'periodic', 'degree']
+        self.update_data(data)
     def __repr__(self):
         repr_str = 'Curve data:\n'
         for key, val in self.data.items():
-            repr_str += f'{key}:{val}\n'
+            repr_str += f'    {key}:{val}\n'
         return repr_str
 
+    def update_data(self,data=None):
+        data = data if not data is None else self.data
+        for attr in self.attrs:
+            try:
+                value = data.get(attr)
+                setattr(self,attr,value)
+            except Exception as e:
+                print(e)
+
     @classmethod
-    def load_from_file(cls, file_path, shape_index=0):
+    def load_from_node(cls,node_name,prototype_name=''):
+        check_exist(node_name)
+        check_type(node_name,'nurbsCurve')
+        data = {}
+        curve_fn = om.MFnNurbsCurve(OMUtils.get_dependency_node(node_name))
+        data['name'] = prototype_name
+        data['pos_array'] = curve_fn.cvPositions()
+        data['knots'] = curve_fn.knots()
+        data['periodic'] = curve_fn.kPeriodic
+        return cls(data)
+    @classmethod
+    def load_from_file(cls,file_name):
+        file_path = os.path.join(cls.DATA_DIR,file_name+'.json')
         file_io = JsonFile(file_path)
         data = file_io.load()
-        name = list(data.keys())[shape_index]
-        instance = cls(name)
-        instance.update_data(data[name])
-        return instance
-
-    @classmethod
-    def load_from_node(cls, node_name):
-        data = cls.collect_curve_data(node_name)[node_name]
-        instance = MCurveData(node_name)
-        instance.update_data(data)
-
-    @staticmethod
-    def collect_curve_data(shape_dag_name):
-        curve_fn = om.MFnNurbsCurve(om.MGlobal.getSelectionListByName(shape_dag_name).getDagPath(0))
-        pos_array = [clamp_list(tuple(i)[:3]) for i in curve_fn.cvPositions()]
-        knots = tuple(curve_fn.knots())
-        degree = curve_fn.degree
-        periodic = curve_fn.kPeriodic
-        data = {shape_dag_name: {
-            'pos_array': pos_array,
-            'knots': knots,
-            'degree': degree,
-            'periodic': periodic
-        }}
+        return cls(data)
+    @property
+    def serialized_data(self):
+        data = self.data
+        data['pos_array'] = [tuple(i) for i in self.data['pos_array']]
+        data['knots'] = [int(i) for i in self.data['knots']]
         return data
 
-    @staticmethod
-    def save_curve_data(node_name, file_path='', override=True):
-        data = MCurveData.collect_curve_data(node_name)
-        if not file_path:
-            file_path = os.path.join(MCurveData.DATA_DIR, f'{node_name}.json')
-        file_io = JsonFile.create(file_path, override=override)
-        file_io.dump(data)
-
-    def apply_data(self, data: dict):
-        pass
-
-    @staticmethod
-    def deserialize_data(data: dict):
-        data['pos_array'] = [om.MVector(i) for i in data['pos_array']]
-        data['knots'] = om.MDoubleArray(data['knots'])
-        return data
-
-    @staticmethod
-    def serialize_data(data):
-        data['pos_array'] = [tuple(i)[:3] for i in data['pos_array']]
-        data['knots'] = tuple(data['knots'])
-        return data
-
-    def update_data(self, data):
-        self.data = self.serialize_data(data)
-
-        exclude = ['name', 'normal_vec']
-        for item in self.attrs:
-            if item in exclude:
-                continue
-            setattr(self, item, self.data[item])
-
-    def check_validate(self):
-        if self.pos_array is None or self.periodic is None or self.knots is None or self.degree == -1:
-            raise ValueError(f'Invalid curve data,\n'
-                             f'pos_array:{self.pos_array}\n'
-                             f'periodic:{self.periodic}\n'
-                             f'knots:{self.knots}\n'
-                             f'degree:{self.degree}')
-
+    def save(self,file_name):
+        file_path = os.path.join(self.DATA_DIR,file_name+'.json')
+        file_io = JsonFile.create(file_path,override=True)
+        file_io.dump(self.serialized_data)
 
 class MeshData(object):
 
@@ -124,3 +92,5 @@ class MBlendShapeData(object):
 
     def __init__(self):
         pass
+
+MCurveData({'name':'test'})

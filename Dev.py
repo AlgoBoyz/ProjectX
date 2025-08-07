@@ -147,7 +147,7 @@ def dev_geo():
 
 def dev_generate_node_slot():
     from XBase import BuildNodeCache
-    BuildNodeCache.dev()
+    BuildNodeCache.build_math_node_cache()
 
 
 def dev_matrix():
@@ -360,11 +360,13 @@ def dev_create_psd_locs():
 
 def dev_MShape():
     from XBase import MTransform as mt
-    from XBase.MShape import MLocatorShape
-    loc = mt.MLocator.create(name='test')
-    print(loc.shape.worldPosition)
-
-
+    from XBase.MShape import MNurbsCurveShape
+    from XBase.MData import MCurveData
+    dev_reset_scene()
+    mc.circle()
+    # data = MCurveData.load_from_node('nurbsCircleShape1')
+    data = MCurveData.load_from_file('test')
+    print(data)
 def dev_rename():
     import maya.cmds as mc
     sel = mc.ls(selection=True, long=True)
@@ -645,4 +647,4 @@ def dev_ast():
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_component()
+    dev_MShape()

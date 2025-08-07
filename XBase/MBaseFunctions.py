@@ -3,7 +3,14 @@ import maya.cmds as mc
 import maya.api.OpenMaya as om
 from libfuturize.fixer_util import is_import_stmt
 
-
+def check_exist(node_name):
+    if not mc.objExists(node_name):
+        raise RuntimeError(f'{node_name} do not exist')
+def check_type(node_name,obj_type):
+    in_type = mc.objectType(node_name)
+    if not in_type == obj_type:
+        print(in_type == obj_type)
+        raise RuntimeError(f'{node_name}({in_type}) is not {obj_type}')
 def get_list_types(lst: list):
     if not lst:
         raise RuntimeError(f'List:{lst} is empty!')
