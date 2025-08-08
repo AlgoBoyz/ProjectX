@@ -1,12 +1,10 @@
 import os
-from idlelib.outwin import file_line_pats
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 import maya.api.OpenMayaAnim as oman
 from maya.api.OpenMayaAnim import MFnSkinCluster
-from maya.app.renderSetup.model.typeIDs import override
 
 from XBase.MConstant import PROJECT_BASE_DIR, Axis
 from XBase.MBaseFunctions import check_type,check_exist,OMUtils
@@ -53,12 +51,15 @@ class MCurveData(object):
         data['pos_array'] = curve_fn.cvPositions()
         data['knots'] = curve_fn.knots()
         data['periodic'] = curve_fn.kPeriodic
+        data['degree'] = curve_fn.degree
         return cls(data)
     @classmethod
     def load_from_file(cls,file_name):
         file_path = os.path.join(cls.DATA_DIR,file_name+'.json')
         file_io = JsonFile(file_path)
         data = file_io.load()
+        data['pos_array'] = om.MPointArray(data['pos_array'])
+        data['knots'] = om.MIntArray(data['knots'])
         return cls(data)
     @property
     def serialized_data(self):

@@ -21,6 +21,12 @@ class ConditionOperation(object):
     LessThan = 4
     LessOrEqual = 5
 
+class ControllerPrototype(object):
+
+    Cube = 0
+    Circle = 1
+    ForwardCircle = 2
+    SquareCircle = 3
 
 class AttrType(object):
     Message = 'message'

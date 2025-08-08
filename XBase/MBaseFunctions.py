@@ -209,6 +209,10 @@ def arg_match_attr(arg,attr_name):
     else:
         return False
 
+def timer():
+    import time
+    start_time = time.time()
+
 class OMUtils(object):
 
     @staticmethod

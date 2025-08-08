@@ -1,8 +1,11 @@
+import os.path
+
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
 from XBase.MData import MCurveData
 from XBase.MNodes import MNode, MAttribute
+
 
 class VirtualShape(object):
 
@@ -31,7 +34,10 @@ class MNurbsCurveShape(MShapeNode):
     def __init__(self, shape_name):
         MShapeNode.__init__(self,shape_name)
         self._check_curve()
-        self.curve_data = MCurveData.load_from_node(shape_name)
+
+    def get_shape_data(self):
+        data = MCurveData.load_from_node(self.shape_name)
+        return data
 
     def _check_curve(self):
         node_type = mc.nodeType(self.shape_name)

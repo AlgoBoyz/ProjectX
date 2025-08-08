@@ -1,29 +1,23 @@
 import logging
+import os
+from typing import Union
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
-from .MNodes import MNode
-from .MConstant import PROJECT_BASE_DIR, Axis
-from .MBaseFunctions import get_child, clamp_list
-from .MTransform import MTransform
-from .MData import MCurveData, MWeightData
+
+from XBase.MTransform import MTransform
+from XBase.MShape import MNurbsCurveShape
+from XBase.MData import MCurveData, MWeightData
 from XTools.XFileTool import JsonFile
 
 
 # from .MTransform import MTransform
 
 
-class MShape(MNode):
-    def __init__(self, shape_node):
-        super().__init__(shape_node)
-
-    @property
-    def transform_node(self):
-        parent = mc.listRelatives(self.name, parent=True)
-        return MTransform(parent)
 
 
-class MMesh(MShape):
+
+class MMesh(object):
     _CREATE_STR = 'polyPlane'
 
     def __init__(self, shape_node):
@@ -45,7 +39,7 @@ class MMesh(MShape):
 
 
 
-class MSurface(MShape):
+class MSurface(object):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership',
                  'hyperLayout', 'isCollapsed', 'blackBox', 'borderConnections', 'isHierarchicalConnection',
                  'publishedNodeInfo', 'rmbCommand', 'templateName', 'templatePath', 'viewName', 'iconName', 'viewMode',
@@ -93,3 +87,51 @@ class MSurface(MShape):
 
     def __init__(self, shape_node):
         super().__init__(shape_node)
+
+class MNurbsCurve(object):
+    
+    def __init__(self,transform:MTransform,shape:Union[MNurbsCurveShape,None]):
+        self.transform = transform
+        self.shape = shape
+    
+    @classmethod
+    def create_by_prototype(cls,name,prototype):
+        if prototype == '':
+            return cls(MTransform.create(name),None)
+        file_path = os.path.join(MCurveData.DATA_DIR,f'{prototype}.json')
+        data_io = JsonFile(file_path)
+        data = data_io.load()
+
+        pos_array = [i[:3] for i in data['pos_array']]
+        knots = data['knots']
+        degree = data['degree']
+
+        curve = mc.curve(name=name,p=pos_array,knot=knots,degree=degree)
+        curve_mt = MTransform(curve)
+        curve_shape = curve_mt.child
+        m_curve_shape = MNurbsCurveShape(curve_shape.name)
+        return cls(curve_mt,m_curve_shape)
+
+    @classmethod
+    def create_by_points(cls,name,points,degree = 3):
+        curve = mc.curve(name=name,p=points,degree=degree)
+        curve_mt = MTransform(curve)
+        curve_shape = curve_mt.child
+        m_curve_shape = MNurbsCurveShape(curve_shape.name)
+        return cls(curve_mt,m_curve_shape)
+
+    def replace_shape_by_prototype(self,prototype):
+        pass
+
+    @classmethod
+    def create_on(cls,other:MTransform,name='',prototype='',suffix=None):
+        if not name:
+            name = f'{other.name}_Ctrl'
+        instance = cls.create_by_prototype(name,prototype)
+        instance.transform.match(other)
+        other.set_parent(instance.transform)
+        if suffix:
+            for i in suffix:
+                grp_name = f'{name}_{i}'
+                instance.transform.insert_parent(grp_name)
+        return instance

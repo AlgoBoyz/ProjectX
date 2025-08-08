@@ -359,14 +359,10 @@ def dev_create_psd_locs():
 
 
 def dev_MShape():
-    from XBase import MTransform as mt
-    from XBase.MShape import MNurbsCurveShape
     from XBase.MData import MCurveData
-    dev_reset_scene()
-    mc.circle()
-    # data = MCurveData.load_from_node('nurbsCircleShape1')
-    data = MCurveData.load_from_file('test')
-    print(data)
+    data=MCurveData.load_from_node('CircleShape',prototype_name='Circle')
+    data.save('Circle')
+
 def dev_rename():
     import maya.cmds as mc
     sel = mc.ls(selection=True, long=True)

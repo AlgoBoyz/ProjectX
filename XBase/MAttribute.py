@@ -140,7 +140,9 @@ class MAttribute(object):
                              currentDriver=driver_attr,
                              driverValue=driver_val,
                              value=driven_val)
-
+    def lock(self,hide=True):
+        channel_box = True if not hide else False
+        mc.setAttr(self.full_name,lock=True,channelBox=channel_box)
 
 def get_handler(value):
     if isinstance(value, int) or isinstance(value, float):

@@ -1,12 +1,11 @@
 import logging
-from typing import Union,Optional
-
+from typing import Union
+from contextlib import contextmanager
 import maya.cmds as mc
 
 from XBase import MTransform as mt
-from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType
-from XBase.MTransform import MJointChain, MTripleJointChain
-
+from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype
+from XBase.MGeometry import MNurbsCurve
 
 class Component(object):
 
@@ -27,6 +26,8 @@ class IKComponentConfig(object):
         self.enable_stretch = True
         self.enable_lock = True
 
+        self.ik_handle_ctrl_prototype = 'Cube'
+        self.pole_vec_ctrl_prototype = 'Cube'
 
 class IKComponent(object):
     CHAINT_TYPE = mt.MTripleJointChain
@@ -72,6 +73,7 @@ class IKComponent(object):
         self.pre_build()
         self._create_pole_vector()
         self._create_ik()
+        self._create_controller()
         if self.config.enable_stretch:
             self._create_ik_stretch()
         if self.config.enable_lock:
@@ -95,6 +97,15 @@ class IKComponent(object):
         pv_pos = self.joint_chain.get_pole_vec_pos(self.config.pv_multiplier)
         self.pole_vec_loc.match_pos(pv_pos)
 
+    def _create_controller(self):
+        self.ik_ctrl = MNurbsCurve.create_on(self.ik_handle.parent,
+                                             name=f'{self.alias}_IkHandle_Ctrl',
+                                             prototype=self.config.ik_handle_ctrl_prototype,
+                                             suffix=['Grp','Offset'])
+        self.pv_ctrl = MNurbsCurve.create_on(self.pole_vec_loc,
+                                             name=f'{self.alias}_PV_Ctrl',
+                                             prototype=self.config.ik_handle_ctrl_prototype,
+                                             suffix=['Grp','Offset'])
     def _create_ik_stretch(self):
         stretch_alias = f'{self.alias}_Stretch'
 
@@ -215,7 +226,7 @@ class FKComponent(object):
         for i, jnt in enumerate(self.joint_chain.nodes):
             ctrl_name = f'{jnt.name}_Ctrl'
             ctrl = self.create_ctrl(ctrl_name)
-            ctrl_mt = mt.MTransform(ctrl)
+            ctrl_mt = ctrl.transform
             ctrl_mt.match(jnt)
             self.fk_ctrls.append(ctrl_mt)
             if i > 0:
@@ -237,7 +248,7 @@ class FKComponent(object):
 
     @staticmethod
     def create_ctrl(name):
-        ctrl = mc.circle(name=name)[0]
+        ctrl = MNurbsCurve.create_by_prototype(name,'Circle')
         return ctrl
 
 class IKFKComponentConfig(object):
@@ -253,16 +264,13 @@ class IKFKComponent(object):
         self.alias = alias
         self.main_joint_chain = joint_chain
         self.config = config
-        self.ik_joint_chain:Optional[MJointChain] = None
-        self.fk_joint_chain:Optional[MJointChain] = None
-        self.ik_component = None
-        self.fk_component = None
 
     def build(self):
         self.pre_build()
         self._create_ik_fk_joints()
         self._create_blend()
         self._create_component()
+        self._create_proxy_attr()
     def pre_build(self):
         if self.config.pre_build_func:
             self.config.pre_build_func()
@@ -295,8 +303,8 @@ class IKFKComponent(object):
         for i,jnt in enumerate(self.main_joint_chain):
             for attr in ['t','r','s']:
                 blend_node = blendColors.create(f'{jnt.name}_{attr}_{blendColors.ALIAS}')
-                self.ik_joint_chain[i].attr(f'{attr}').mount(blend_node.color1)
-                self.fk_joint_chain[i].attr(f'{attr}').mount(blend_node.color2)
+                self.fk_joint_chain[i].attr(f'{attr}').mount(blend_node.color1)
+                self.ik_joint_chain[i].attr(f'{attr}').mount(blend_node.color2)
                 blend_node.blender.mount(self.ctrl_value_node.IKFKSwitch,inverse=True)
                 blend_node.output.mount(jnt.attr(attr))
 
@@ -306,6 +314,11 @@ class IKFKComponent(object):
         self.fk_component = FKComponent(f'{self.alias}_FK',self.fk_joint_chain,self.config.fk_config)
         self.fk_component.build()
 
+    def _create_proxy_attr(self):
+        self.ik_component.ik_ctrl.transform.add_attr(attr_name='IKFKSwitch',
+                                                     keyable=True,
+                                                     proxy=f'{self.ctrl_value_node.IKFKSwitch.full_name}')
+        self.ik_component.ik_ctrl.transform.visibility.lock(hide=True)
 
 class SplineIKComponentConfig(object):
 

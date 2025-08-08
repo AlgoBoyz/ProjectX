@@ -133,6 +133,9 @@ class MTransform(MNode):
         pass
 
     def lock_attrs(self, *attr_prefix, vis=True, hide=True):
+        """
+        attr_prefix:t,r,x
+        """
         for axis in ['x', 'y', 'z']:
             for prefix in attr_prefix:
                 if hide:
