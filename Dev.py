@@ -114,9 +114,13 @@ def dev_ui():
 
 def dev_component():
     dev_reset_scene()
+    from XBase.MTransform import MJointChain
     from XModules import MComponent
-    jc = dev_create_ik_joints()
-    cp = MComponent.IKFKComponent('LF_Arm_01', jc)
+    # jc = dev_create_ik_joints()
+    jc = MJointChain.create([f'jnt_{i}' for i in range(7)])
+    for jnt in jc[1:]:
+        jnt.tx.mount(1)
+    cp = MComponent.SplineIKComponent('MD_Spine_01', jc)
     cp.build()
 
 
@@ -643,4 +647,4 @@ def dev_ast():
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_MShape()
+    dev_component()

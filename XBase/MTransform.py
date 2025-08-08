@@ -255,7 +255,6 @@ class MTransformList(object):
     def __init__(self, mt_names):
         self.node_names = mt_names
         self.nodes = []
-        self.positions = []
         self._init_node_list()
         self.len = len(self.node_names)
 
@@ -291,7 +290,13 @@ class MTransformList(object):
             return cls(nodes_created)
         else:
             return cls(names)
-
+    @property
+    def pos_array(self):
+        positions = []
+        for i in self:
+            pos = mc.xform(i.name,q=True,worldSpace=True,translation=True)
+            positions.append(pos)
+        return positions
     def unparent_all(self, tmp_group=None):
 
         for node in self.nodes:

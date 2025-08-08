@@ -6,6 +6,8 @@ import maya.cmds as mc
 from XBase import MTransform as mt
 from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype
 from XBase.MGeometry import MNurbsCurve
+from XBase.MShape import MNurbsCurveShape
+
 
 class Component(object):
 
@@ -225,7 +227,7 @@ class FKComponent(object):
     def _create_fk_ctrls(self):
         for i, jnt in enumerate(self.joint_chain.nodes):
             ctrl_name = f'{jnt.name}_Ctrl'
-            ctrl = self.create_ctrl(ctrl_name)
+            ctrl = MNurbsCurve.create_by_prototype(ctrl_name,'Circle')
             ctrl_mt = ctrl.transform
             ctrl_mt.match(jnt)
             self.fk_ctrls.append(ctrl_mt)
@@ -246,10 +248,6 @@ class FKComponent(object):
         if self.config.post_build_func:
             self.config.post_build_func()
 
-    @staticmethod
-    def create_ctrl(name):
-        ctrl = MNurbsCurve.create_by_prototype(name,'Circle')
-        return ctrl
 
 class IKFKComponentConfig(object):
     def __init__(self):
@@ -323,20 +321,47 @@ class IKFKComponent(object):
 class SplineIKComponentConfig(object):
 
     def __init__(self):
-        self.controller_count = 5
-        self.add_pose_morph_tag = True
-        self.controller_parent_suffixes = ["Grp", "Driven"]
-        self.spline_type = "Cubic"
-        self.fit_mode = "Relevant"
-        self.create_fk_controller = True
-        self.controller_null_shape = None
-        self.add_controller_properties = True
-        self.create_hierarchy = True
-        self.use_spline = ""
-        self.attr_type = AttrType.Float3
+        self.pre_build_func = None
+        self.create_curve = True
 
 
+class SplineIKComponent(object):
 
-class SplineIKComponent(Component):
-    pass
+    def __init__(self,alias,joint_chain:mt.MJointChain,config = SplineIKComponentConfig()):
+        self.alias = alias
+        self.joint_chain = joint_chain
+        self.config = config
+
+    def pre_build(self):
+        if self.config.pre_build_func:
+            self.config.pre_build_func()
+        self.cache_grp = mt.MTransform.create(f'{self.alias}_Cache_Grp')
+        GlobalConfig.set_root(self.cache_grp.name)
+        self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp')
+        self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
+
+    def build(self):
+        self.pre_build()
+        self._create_spline_ik()
+
+    def _create_spline_ik(self):
+        if not self.config.create_curve:
+            self.ik_curve = MNurbsCurve.create_by_points(name=f'{self.alias}_IKHandle_Ctrl',
+                                                         points=self.joint_chain.pos_array,
+                                                         degree=3)
+        if self.config.create_curve:
+            ik_handle, ik_effector,ik_curve= mc.ikHandle(startJoint=self.joint_chain[0].name,
+                                                 endEffector=self.joint_chain[-1].name,
+                                                 solver='ikSplineSolver',
+                                                 createCurve=self.config.create_curve)
+            self.ik_curve = MNurbsCurve(mt.MTransform(ik_curve),mc.listRelatives(ik_curve,shapes=True)[0])
+        else:
+            ik_handle, ik_effector = mc.ikHandle(startJoint=self.joint_chain[0].name,
+                                                 endEffector=self.joint_chain[-1].name,
+                                                 solver='ikSplineSolver',
+                                                 createCurve=self.config.create_curve,
+                                                 curve=self.ik_curve.transform.name)
+        self.ik_handle = mt.MTransform(ik_handle)
+        self.ik_handle.insert_parent(f'{self.ik_handle.name}_Grp')
+
 
