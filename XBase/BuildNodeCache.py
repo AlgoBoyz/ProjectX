@@ -57,7 +57,7 @@ def build_math_node_cache():
             names.append(cls._CREATE_STR)
         except Exception as e:
             logging.error(e)
-    tmp_names = ['nurbsCurve','locator']
+    tmp_names = ['nurbsCurve','locator','nurbsSurface']
     attrs_out = []
     for name in tmp_names:
         try:

@@ -96,6 +96,7 @@ def List2MVector(lst):
 
 
 def cross_product(v1, v2):
+    print(v1,v2)
     x = v1[1] * v2[2] - v1[2] * v2[1]
     y = v1[2] * v2[0] - v1[0] * v2[2]
     z = v1[0] * v2[1] - v1[1] * v2[0]
@@ -110,6 +111,20 @@ def normalize_vector(vector):
     norm = math.sqrt(sum(x ** 2 for x in vector))
 
     return [round(i, 5) for i in [x / norm for x in vector]]
+
+def linear_space(start,end,num):
+    if num < 2:
+        raise RuntimeError(f'Number can not less than 2')
+    portion = (end-start)/num
+    lst = []
+    current_num = start
+    while True:
+        lst.append(current_num)
+        current_num+=portion
+        if current_num>=end:
+            lst.append(end)
+            break
+    return lst
 
 
 def increase_save():
@@ -243,4 +258,5 @@ class OMUtils(object):
 
         return mo
 if __name__ == '__main__':
-    pass
+    res = linear_space(0,1,5)
+    print(res)

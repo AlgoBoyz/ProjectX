@@ -4,7 +4,8 @@ import logging
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
-from XBase.MTransform import MJoint
+from XBase.MShape import MNurbsSurfaceShape
+from XBase.MTransform import MJoint, MLocator
 from LoggingSetup import setup_global_logger
 
 setup_global_logger()
@@ -116,11 +117,11 @@ def dev_component():
     dev_reset_scene()
     from XBase.MTransform import MJointChain
     from XModules import MComponent
-    # jc = dev_create_ik_joints()
-    jc = MJointChain.create([f'jnt_{i}' for i in range(7)])
-    for jnt in jc[1:]:
-        jnt.tx.mount(1)
-    cp = MComponent.SplineIKComponent('MD_Spine_01', jc)
+    jc = dev_create_ik_joints()
+    # jc = MJointChain.create([f'jnt_{i}' for i in range(7)])
+    # for jnt in jc[1:]:
+    #     jnt.tx.mount(1)
+    cp = MComponent.SurfaceBaseTwistComponent('LF_Arm_01_Twist', jc)
     cp.build()
 
 
@@ -364,9 +365,12 @@ def dev_create_psd_locs():
 
 def dev_MShape():
     from XBase.MData import MCurveData
-    data=MCurveData.load_from_node('CircleShape',prototype_name='Circle')
-    data.save('Circle')
-
+    from XBase.MGeometry import MNurbsSurface
+    from XBase.MShape import MNurbsCurveShape
+    from XBase.MTransform import MTransform
+    from XBase.MConstant import Axis
+    surface = MNurbsSurface(MTransform('LF_Arm_01_Twist_Surface'),MNurbsSurfaceShape('LF_Arm_01_Twist_SurfaceShape'))
+    surface.create_joint_on('test_jnt',uv=(0.5,0.5),aim_axis=Axis.X.name,up_axis=Axis.Y.name)
 def dev_rename():
     import maya.cmds as mc
     sel = mc.ls(selection=True, long=True)
@@ -643,8 +647,18 @@ def dev_ast():
     txt = 'a.tx + b.ty+z.tz'
     Lexer(txt).get_tokens()
 
-
+def dev_spline():
+    dev_reset_scene()
+    from XBase.MGeometry import MNurbsCurve
+    from XBase.MTransform import MLocator
+    curve = MNurbsCurve.create_by_points('test_curve',[[0,0,0],[1,0,0],[2,0,0],[3,0,0],[8,0,0]])
+    point=curve.shape.shape_fn.getPointAtParam(1)
+    print(point)
+    print(curve.shape.minValue.value)
+    print(curve.shape.maxValue.value)
+    locator = MLocator.create('test_loc')
+    locator.match_pos([i for i in list(point)[:3]])
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_component()
+    dev_build_node_slot()

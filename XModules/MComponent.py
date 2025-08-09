@@ -1,12 +1,14 @@
 import logging
 from typing import Union
-from contextlib import contextmanager
+
 import maya.cmds as mc
 
 from XBase import MTransform as mt
-from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype
-from XBase.MGeometry import MNurbsCurve
-from XBase.MShape import MNurbsCurveShape
+from XBase.MBaseFunctions import linear_space
+from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype,Axis
+from XBase.MGeometry import MNurbsCurve,MNurbsSurface
+from XBase.MNodes import MNode
+from XBase.MShape import MNurbsSurfaceShape
 
 
 class Component(object):
@@ -327,11 +329,9 @@ class SplineIKComponentConfig(object):
 
     def __init__(self):
         self.pre_build_func = None
-        self.create_curve = True
-
+        self.custom_spline = ''
 
 class SplineIKComponent(object):
-
     def __init__(self, alias, joint_chain: mt.MJointChain, config=SplineIKComponentConfig()):
         self.alias = alias
         self.joint_chain = joint_chain
@@ -350,7 +350,7 @@ class SplineIKComponent(object):
         self._create_spline_ik()
 
     def _create_spline_ik(self):
-        if not self.config.create_curve:
+        if  self.config.custom_spline:
             self.ik_curve = MNurbsCurve.create_by_points(name=f'{self.alias}_IKHandle_Ctrl',
                                                          points=self.joint_chain.pos_array,
                                                          degree=3)
@@ -401,7 +401,7 @@ class CurveBaseTwistComponent(object):
         pass
 
 
-class SurfaceBaseTwistComponetConfig(object):
+class SurfaceBaseTwistComponentConfig(object):
 
     def __init__(self):
         self.pre_build_func = None
@@ -413,7 +413,7 @@ class SurfaceBaseTwistComponetConfig(object):
 
 class SurfaceBaseTwistComponent(object):
 
-    def __init__(self, alias, joint_chain, config=SurfaceBaseTwistComponetConfig()):
+    def __init__(self, alias, joint_chain, config=SurfaceBaseTwistComponentConfig()):
         self.alias = alias
         self.joint_chain = joint_chain
         self.config = config
@@ -432,10 +432,27 @@ class SurfaceBaseTwistComponent(object):
         self._setup_surface_weight()
 
     def _create_surface(self):
-        pass
+        surface_transform,make_surface = mc.nurbsPlane(name=f'{self.alias}_Surface',axis=(0,1,0))
+        surface_shape = mc.listRelatives(surface_transform,shapes=True)[0]
+        self.surface = MNurbsSurface(mt.MTransform(surface_transform),MNurbsSurfaceShape(surface_shape))
+        self.surface.transform.match(self.joint_chain[0])
+        self.surface_maker = MNode(make_surface)
+        self.surface_maker.patchesU =3
+        self.surface_maker.patchesV =1
+        self.surface_maker.pivotX.set(0.5*self.joint_chain[1].tx.value)
+        self.surface_maker.width.set(self.joint_chain[1].tx)
+        self.surface_maker.lengthRatio.set(0.1)
 
     def _create_twist_joints(self):
-        pass
+        u_array = linear_space(0,1,self.config.ik_ctrl_count-1)
+        jnts = []
+        for i,u in enumerate(u_array):
+            jnt = self.surface.create_joint_on(f'{self.alias}_{i+1:02d}_Jnt',
+                                               [u,0.5],
+                                               aim_axis=Axis.X.name,
+                                               up_axis=Axis.Y.name)
+            jnts.append(jnt)
+        self.twist_joints = mt.MJointSet(jnts)
 
     def _setup_surface_weight(self):
         pass
