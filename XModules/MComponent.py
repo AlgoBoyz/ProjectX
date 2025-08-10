@@ -5,8 +5,8 @@ import maya.cmds as mc
 
 from XBase import MTransform as mt
 from XBase.MBaseFunctions import linear_space
-from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype,Axis
-from XBase.MGeometry import MNurbsCurve,MNurbsSurface
+from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype, Axis
+from XBase.MGeometry import MNurbsCurve, MNurbsSurface
 from XBase.MNodes import MNode
 from XBase.MShape import MNurbsSurfaceShape
 
@@ -298,7 +298,6 @@ class IKFKComponent(object):
                 if i == 0:
                     jnt.set_visibility(False)
                     jnt.insert_parent(f'{self.alias}_{suffix}_Jnts_Grp')
-            new_chain.rename_chain(new_names)
         self.ik_joint_chain = chains[0]
         self.fk_joint_chain = chains[1]
 
@@ -322,6 +321,12 @@ class IKFKComponent(object):
         self.ik_component.ik_ctrl.transform.add_attr(attr_name='IKFKSwitch',
                                                      keyable=True,
                                                      proxy=f'{self.ctrl_value_node.IKFKSwitch.full_name}')
+        self.ik_component.ik_ctrl.transform.add_attr(attr_name='stretch',
+                                                     keyable=True,
+                                                     proxy=f'{self.ik_component.ctrl_value_node.stretch.full_name}')
+        self.ik_component.ik_ctrl.transform.add_attr(attr_name='lock',
+                                                     keyable=True,
+                                                     proxy=f'{self.ik_component.ctrl_value_node.lock.full_name}')
         self.ik_component.ik_ctrl.transform.visibility.lock(hide=True)
 
 
@@ -330,6 +335,7 @@ class SplineIKComponentConfig(object):
     def __init__(self):
         self.pre_build_func = None
         self.custom_spline = ''
+
 
 class SplineIKComponent(object):
     def __init__(self, alias, joint_chain: mt.MJointChain, config=SplineIKComponentConfig()):
@@ -350,7 +356,7 @@ class SplineIKComponent(object):
         self._create_spline_ik()
 
     def _create_spline_ik(self):
-        if  self.config.custom_spline:
+        if self.config.custom_spline:
             self.ik_curve = MNurbsCurve.create_by_points(name=f'{self.alias}_IKHandle_Ctrl',
                                                          points=self.joint_chain.pos_array,
                                                          degree=3)
@@ -408,7 +414,8 @@ class SurfaceBaseTwistComponentConfig(object):
 
         self.enable_wave = True
         self.enable_fk = False
-        self.ik_ctrl_count = 3
+        self.ik_ctrl_count = 5
+        self.plane_span = 2
 
 
 class SurfaceBaseTwistComponent(object):
@@ -427,32 +434,67 @@ class SurfaceBaseTwistComponent(object):
         self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
 
     def build(self):
+        self.pre_build()
         self._create_surface()
         self._create_twist_joints()
+        self._create_control_joint()
         self._setup_surface_weight()
 
     def _create_surface(self):
-        surface_transform,make_surface = mc.nurbsPlane(name=f'{self.alias}_Surface',axis=(0,1,0))
-        surface_shape = mc.listRelatives(surface_transform,shapes=True)[0]
-        self.surface = MNurbsSurface(mt.MTransform(surface_transform),MNurbsSurfaceShape(surface_shape))
+        surface_transform, make_surface = mc.nurbsPlane(name=f'{self.alias}_Surface', axis=(0, 1, 0))
+        surface_shape = mc.listRelatives(surface_transform, shapes=True)[0]
+        self.surface = MNurbsSurface(mt.MTransform(surface_transform), MNurbsSurfaceShape(surface_shape))
         self.surface.transform.match(self.joint_chain[0])
         self.surface_maker = MNode(make_surface)
-        self.surface_maker.patchesU =3
-        self.surface_maker.patchesV =1
-        self.surface_maker.pivotX.set(0.5*self.joint_chain[1].tx.value)
+        self.surface_maker.patchesU.set(self.config.plane_span)
+        self.surface_maker.patchesV.set(1)
+        self.surface_maker.pivotX.set(0.5 * self.joint_chain[1].tx.value)
         self.surface_maker.width.set(self.joint_chain[1].tx)
         self.surface_maker.lengthRatio.set(0.1)
 
     def _create_twist_joints(self):
-        u_array = linear_space(0,1,self.config.ik_ctrl_count-1)
+        u_array = linear_space(0, 1, self.config.ik_ctrl_count - 1)
         jnts = []
-        for i,u in enumerate(u_array):
-            jnt = self.surface.create_joint_on(f'{self.alias}_{i+1:02d}_Jnt',
-                                               [u,0.5],
+        self.follicles = []
+        for i, u in enumerate(u_array):
+            jnt = self.surface.create_joint_on(f'{self.alias}_{i + 1:02d}_Jnt',
+                                               [u, 0.5],
                                                aim_axis=Axis.X.name,
                                                up_axis=Axis.Y.name)
             jnts.append(jnt)
+
+            fol = self.surface.create_follicle_on(f'{self.alias}_{i + 1:02d}_Fol',
+                                                  [u, 0.5])
+            jnt.set_parent(fol)
         self.twist_joints = mt.MJointSet(jnts)
+
+    def _create_control_joint(self):
+        self.start_ctrl_jnt = mt.MJoint.create(f'{self.alias}_Ctrl_Jnt', match=self.joint_chain[0])
+        self.end_bind_jnt = mt.MJoint.create(f'{self.alias}_CtrlTipBind_Jnt',
+                                             match=self.twist_joints[-1])
+        self.end_ctrl_jnt = mt.MJoint.create(f'{self.alias}_CtrlTip_Jnt',
+                                             match=self.twist_joints[-1])
+        mc.pointConstraint(self.end_ctrl_jnt, self.end_bind_jnt)
+
+        self.mid_ctrl_jnt = self.surface.create_joint_on(joint_name=f'{self.alias}_CtrlMid_Jnt',
+                                                         uv=[0.5, 0.5],
+                                                         aim_axis=Axis.X.name,
+                                                         up_axis=Axis.Y.name)
+
+        mc.parentConstraint(self.start_ctrl_jnt.name, self.end_ctrl_jnt.name, self.mid_ctrl_jnt.name)
+
+        mc.aimConstraint(self.end_ctrl_jnt.name,
+                         self.start_ctrl_jnt.name,
+                         aimVector=[1, 0, 0],
+                         worldUpType='objectrotation',
+                         worldUpObject=self.end_ctrl_jnt.name,
+                         worldUpVector=[0, 1, 0],
+                         upVector=[0, 1, 0])
+
+        mc.skinCluster(self.surface.shape.shape_name,
+                       self.start_ctrl_jnt.name,
+                       self.end_bind_jnt.name,
+                       self.mid_ctrl_jnt.name)
 
     def _setup_surface_weight(self):
         pass
