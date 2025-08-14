@@ -1,11 +1,14 @@
 import os.path
+from typing import Union
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
+from setuptools.command.rotate import rotate
 
-from XBase.MBaseFunctions import OMUtils
+from XBase.MBaseFunctions import OMUtils,undo_stack
 from XBase.MData import MCurveData
 from XBase.MNodes import MNode, MAttribute
+from XBase.MConstant import Axis
 
 
 class VirtualShape(object):
@@ -58,13 +61,31 @@ class MNurbsCurveShape(MShapeNode):
     def shape_fn(self):
         return om.MFnNurbsCurve(OMUtils.get_dependency_node(self.shape_name))
     def set_color(self, color):
-        pass
+        self.overrideEnabled.set(1)
+        self.overrideRGBColors.set(1)
+        self.overrideColorRGB.set(color)
 
-    def set_scale(self, scale_factor):
-        pass
-
+    def set_scale(self, scale_factor:Union[list,int]):
+        if isinstance(scale_factor,int):
+            scale_factor = [scale_factor,scale_factor,scale_factor]
+        with undo_stack():
+            for vert_idx in range(self.shape_fn.numCVs):
+                vert_coord = mc.xform(f'{self.shape_name}.cv[{vert_idx}]',q=True,translation=True,objectSpace=True)
+                coord = [i*j for i,j in zip(vert_coord,scale_factor)]
+                mc.xform(f'{self.shape_name}.cv[{vert_idx}]',translation=coord,objectSpace=True)
     def set_rotate(self, axis, degree):
-        pass
+        rotation = [degree,0,0]
+        if axis == Axis.X:
+            rotation = [degree,0,0]
+        elif axis == Axis.Y:
+            rotation = [0,degree,0]
+        elif axis == Axis.Z:
+            rotation = [0,0,degree]
+
+        with undo_stack():
+            for vert_idx in range(self.shape_fn.numCVs):
+                vert_coord = mc.xform(f'{self.shape_name}.cv[{vert_idx}]',q=True,translation=True,objectSpace=True)
+                mc.xform(f'{self.shape_name}.cv[{vert_idx}]',rotation=rotation,objectSpace=True)
 
 class MNurbsSurfaceShape(MShapeNode):
 

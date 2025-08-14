@@ -1,7 +1,16 @@
 import math
 import maya.cmds as mc
 import maya.api.OpenMaya as om
-from libfuturize.fixer_util import is_import_stmt
+
+from contextlib import contextmanager
+
+@contextmanager
+def undo_stack():
+    mc.undoInfo(openChunk=True)
+    print('Open undo chunk')
+    yield
+    mc.undoInfo(closeChunk=True)
+    print('Close undo chunk')
 
 def check_exist(node_name):
     if not mc.objExists(node_name):
@@ -126,7 +135,6 @@ def linear_space(start,end,num):
             break
     return lst
 
-git
 def increase_save():
     file = mc.file(absoluteName=True)
     print(file)

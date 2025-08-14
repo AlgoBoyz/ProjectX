@@ -68,8 +68,13 @@ class MNurbsCurve(object):
         return cls(curve_mt, m_curve_shape)
 
     def replace_shape_by_prototype(self, prototype):
-        pass
-
+        mc.delete(self.shape.shape_name)
+        new_curve = self.create_by_prototype(f'{self.transform.name}_tmp_curve',prototype)
+        new_curve.transform.match(self.transform)
+        mc.parent(new_curve.shape.shape_name,self.transform.name,shape=True,addObject=True)
+        self.shape = new_curve.shape
+        mc.rename(self.shape.shape_name,f'{self.transform.name}Shape')
+        mc.delete(new_curve.transform.name)
     @classmethod
     def create_on(cls, other: MTransform, name='', prototype='', suffix=None):
         if not name:

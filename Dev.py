@@ -149,9 +149,13 @@ def dev_save_data():
 
 
 def dev_geo():
-    from XTools import XWeightTool
-    XWeightTool.WeightDataCollector()
-
+    from XBase.MConstant import Axis
+    from XBase.MGeometry import MNurbsCurve
+    curve = MNurbsCurve.create_by_prototype('test_cube','Cube')
+    curve.shape.set_color([1,1,0])
+    curve.shape.set_rotate(Axis.X,45)
+    curve.replace_shape_by_prototype('Circle')
+    curve.shape.set_scale([10,1,1])
 
 def dev_generate_node_slot():
     from XBase import BuildNodeCache
