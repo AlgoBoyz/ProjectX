@@ -124,9 +124,9 @@ def dev_component():
     # jc = MJointChain.create([f'jnt_{i}' for i in range(7)])
     # for jnt in jc[1:]:
     #     jnt.tx.mount(1)
-    cp = MComponent.IKFKComponent('LF_Arm_01', jc)
-    cp.build()
-
+    # cp = MComponent.SurfaceBaseTwistComponent('LF_Arm_01', jc)
+    # cp.build()
+    print(jc[0].tx.default_value)
 
 def dev_create_skinned_mesh():
     from XBase import MTransform as mt

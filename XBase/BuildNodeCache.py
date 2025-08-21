@@ -3,7 +3,6 @@ import sys
 import logging
 from XBase.MConstant import PROJECT_BASE_DIR
 import maya.cmds as mc
-from maya.internal.nodes.blendfalloff.action import PRIMITIVE_ICON
 
 txt_path = rf'{os.path.dirname(__file__)}/Nodes.txt'
 math_node_path = os.path.join(PROJECT_BASE_DIR, 'XBase', 'MathNodes')
@@ -57,7 +56,7 @@ def build_math_node_cache():
             names.append(cls._CREATE_STR)
         except Exception as e:
             logging.error(e)
-    tmp_names = ['nurbsCurve','locator','nurbsSurface']
+    tmp_names = ['nurbsCurve', 'locator', 'nurbsSurface']
     attrs_out = []
     for name in tmp_names:
         try:

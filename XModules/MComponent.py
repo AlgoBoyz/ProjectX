@@ -334,7 +334,7 @@ class SplineIKComponentConfig(object):
 
     def __init__(self):
         self.pre_build_func = None
-        self.custom_spline = ''
+        self.create_curve = True
 
 
 class SplineIKComponent(object):
@@ -356,10 +356,7 @@ class SplineIKComponent(object):
         self._create_spline_ik()
 
     def _create_spline_ik(self):
-        if self.config.custom_spline:
-            self.ik_curve = MNurbsCurve.create_by_points(name=f'{self.alias}_IKHandle_Ctrl',
-                                                         points=self.joint_chain.pos_array,
-                                                         degree=3)
+
         if self.config.create_curve:
             ik_handle, ik_effector, ik_curve = mc.ikHandle(startJoint=self.joint_chain[0].name,
                                                            endEffector=self.joint_chain[-1].name,
@@ -369,9 +366,8 @@ class SplineIKComponent(object):
         else:
             ik_handle, ik_effector = mc.ikHandle(startJoint=self.joint_chain[0].name,
                                                  endEffector=self.joint_chain[-1].name,
-                                                 solver='ikSplineSolver',
-                                                 createCurve=self.config.create_curve,
-                                                 curve=self.ik_curve.transform.name)
+                                                 solver='ikSplineSolver'
+                                                 )
         self.ik_handle = mt.MTransform(ik_handle)
         self.ik_handle.insert_parent(f'{self.ik_handle.name}_Grp')
 
@@ -461,11 +457,12 @@ class SurfaceBaseTwistComponent(object):
                                                [u, 0.5],
                                                aim_axis=Axis.X.name,
                                                up_axis=Axis.Y.name)
+            jnt_parent = jnt.insert_parent(f'{jnt.name}_Grp')
             jnts.append(jnt)
 
             fol = self.surface.create_follicle_on(f'{self.alias}_{i + 1:02d}_Fol',
                                                   [u, 0.5])
-            jnt.set_parent(fol)
+            # jnt_parent.set_parent(fol)
         self.twist_joints = mt.MJointSet(jnts)
 
     def _create_control_joint(self):

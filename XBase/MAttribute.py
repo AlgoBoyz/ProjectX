@@ -71,6 +71,11 @@ class MAttribute(object):
         else:
             return None
 
+    @property
+    def default_value(self):
+        dv = mc.addAttr(self.full_name, q=True, dv=True)
+        return dv
+
     def mount(self, other, force=True, inverse=False):
         """
         挂载属性，可以挂载常数，常数列表，亦可挂载另一个属性，或者一个属性列表,基本上就是将connectAttr跟setAttr合并起来，方便后续节点图的编写
@@ -134,15 +139,34 @@ class MAttribute(object):
         else:
             mc.setAttr(self.full_name, value)
 
+    def reset(self):
+        single_axis_attrs = ['translateX', 'translateY', 'translateZ',
+                             'rotateX', 'rotateY', 'rotateZ',
+                             'tx', 'ty', 'tz',
+                             'rx', 'ry', 'rz']
+        if self.attr_name in ['translate', 'rotate', 't', 'r']:
+            self.set([0, 0, 0])
+        elif self.attr_name in ['scale', 's']:
+            self.set([1, 1, 1])
+
+        elif self.attr_name in single_axis_attrs:
+            self.set(0)
+        elif self.attr_name in ['v', 'visibility']:
+            self.set(1)
+        else:
+            self.set(self.default_value)
+
     def set_driven_key(self, driver_attr, driver_val, driven_val):
         driver_attr = driver_attr.full_name if isinstance(driver_attr, MAttribute) else driver_attr
         mc.setDrivenKeyframe(self.full_name,
                              currentDriver=driver_attr,
                              driverValue=driver_val,
                              value=driven_val)
-    def lock(self,hide=True):
+
+    def lock(self, hide=True):
         channel_box = True if not hide else False
-        mc.setAttr(self.full_name,lock=True,channelBox=channel_box)
+        mc.setAttr(self.full_name, lock=True, channelBox=channel_box)
+
 
 def get_handler(value):
     if isinstance(value, int) or isinstance(value, float):
