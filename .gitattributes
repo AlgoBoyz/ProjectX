@@ -1,0 +1,5 @@
+*.ma linguist-detectable=false
+*.mb linguist-detectable=false
+*.drawio linguist-detectable=false
+*.excalidraw linguist-detectable=false
+res/* linguist-detectable=false
