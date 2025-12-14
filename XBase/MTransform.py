@@ -10,7 +10,6 @@ from XBase.MConstant import GlobalConfig, WorldUpType, Axis, ParentType
 
 class MTransform(MNode):
     _CREATE_STR = 'transform'
-    root_space = GlobalConfig.transform_root
 
     def __init__(self, name):
         super().__init__(name)
@@ -35,8 +34,8 @@ class MTransform(MNode):
             mc.matchTransform(node, match)
         if pos:
             mc.xform(node, worldSpace=True, translation=pos)
-        if cls.root_space and not under:
-            mc.parent(node, cls.root_space)
+        if GlobalConfig.transform_root and not under:
+            mc.parent(node, GlobalConfig.transform_root)
 
         return cls(node)
 
@@ -63,7 +62,7 @@ class MTransform(MNode):
 
     @property
     def local_pos(self):
-        pos = mc.xform(self.name, worldSpace=False, translation=True, q=True)
+        pos = mc.xform(self.name, worldSpace=False, translation=True, q=True)  # pos:list[3]
         return om.MVector(pos)
 
     @property
@@ -95,15 +94,22 @@ class MTransform(MNode):
         return loc
 
     def set_parent(self, parent):
+
         if parent is None or parent == 'None':
             if self.parent is None:
                 return True
             else:
                 mc.parent(self.name, world=True)
                 return True
+
         elif mc.objExists(str(parent)):
-            mc.parent(self.name, str(parent))
+            if str(parent) == str(self.parent):
+                print(f'{self.name} already a child of {parent}')
+                pass
+            else:
+                mc.parent(self.name, str(parent))
             return True
+
         else:
             raise RuntimeError(f'Parent object do not exist :{parent}')
 
@@ -125,8 +131,10 @@ class MTransform(MNode):
     def insert_parent(self, name):
         pre_parent = self.parent
         instance = MTransform.create(name=name, match=self)
+        self.set_parent(None)
         self.set_parent(instance)
-        instance.set_parent(pre_parent)
+        if pre_parent is not None:
+            instance.set_parent(pre_parent)
         return instance
 
     def unparent(self):
@@ -171,8 +179,14 @@ class MTransform(MNode):
         pos_after = self.world_pos + vec if world else self.local_pos + vec
         self.match_pos(pos_after)
 
+    def mirror(self, plane='yz'):
+        pre_pos = [i for i in self.world_pos]
+
+        if plane == 'yz':
+            pos = [pre_pos[0] * -1, pre_pos[1], pre_pos[2]]
+
     def set_visibility(self, visibility: bool):
-        mc.setAttr(f'{self.name}.v',visibility)
+        mc.setAttr(f'{self.name}.v', visibility)
 
     def get_vector_to(self, other):
         if isinstance(other, str):
@@ -186,6 +200,7 @@ class MTransform(MNode):
         return mat
 
     def reorient(self, aim_axis, aim_vec, up_axis, up_vec):
+        # todo:计算精度有问题，导致最后缩放会出现误差gb
         from XBase.MBaseFunctions import normalize_vector, cross_product
         axis_index_look_up = {Axis.X.name: 0, Axis.Y.name: 1, Axis.Z.name: 2}
         lst = [i for i in axis_index_look_up.values()]
@@ -214,10 +229,11 @@ class MTransform(MNode):
 
 class MLocator(MTransform):
     _CREATE_STR = 'locator'
-    root_space = GlobalConfig.joint_root
 
-    def __init__(self, name, shape):
+    def __init__(self, name, shape=None):
         super().__init__(name)
+        if shape is None:
+            shape = f'{name}Shape'
         self.shape = MLocatorShape(shape)
 
     @classmethod
@@ -228,8 +244,8 @@ class MLocator(MTransform):
         transform = mc.listRelatives(shape, parent=True)[0]
         instance = cls(transform, shape)
         instance.rename(name)
-        if cls.root_space:
-            instance.set_parent(cls.root_space)
+        if GlobalConfig.locator_root:
+            instance.set_parent(GlobalConfig.locator_root)
         under = kwargs.pop('under', '')
         if under:
             instance.set_parent(under)
@@ -246,7 +262,6 @@ class MLocator(MTransform):
 
 class MJoint(MTransform):
     _CREATE_STR = 'joint'
-    root_space = GlobalConfig.joint_root
 
 
 class MTransformList(object):
@@ -290,13 +305,15 @@ class MTransformList(object):
             return cls(nodes_created)
         else:
             return cls(names)
+
     @property
     def pos_array(self):
         positions = []
         for i in self:
-            pos = mc.xform(i.name,q=True,worldSpace=True,translation=True)
+            pos = mc.xform(i.name, q=True, worldSpace=True, translation=True)
             positions.append(pos)
         return positions
+
     def unparent_all(self, tmp_group=None):
 
         for node in self.nodes:
@@ -363,14 +380,15 @@ class MJointChain(MJointSet):
         return normal
 
     @classmethod
-    def duplicate(cls,other):
+    def duplicate(cls, other):
         pass
 
-    def rename_chain(self,new_names):
-        for i,jnt in enumerate(self):
+    def rename_chain(self, new_names):
+        for i, jnt in enumerate(self):
             jnt.rename(new_names[i])
         self.node_names[:len(new_names)] = new_names
         self.nodes = [MJoint(i) for i in self.node_names]
+
     def update_chain(self):
         self.unparent_all()
         self.parent_all()
@@ -436,6 +454,22 @@ class MJointChain(MJointSet):
     def freeze(self):
         for jnt in self:
             jnt.freeze()
+
+    def resample_by_proportion(self, count):
+        from XBase.MBaseFunctions import linear_space
+        if self.len != 2:
+            raise RuntimeError(f'Can not resample joint chain,length of chain should be 2')
+        vec_to_scale = [i for i in self.nodes[-1].world_pos - self.nodes[0].world_pos]
+        linear_indecies = linear_space(0, 1, count - 1)
+        new_chain = []
+        for i, factor in enumerate(linear_indecies):
+            new_jnt = MJoint.create(f'tmp_{i + 1}')
+            new_jnt.match(self.nodes[0])
+            new_jnt.move_by([factor * j for j in vec_to_scale])
+            new_chain.append(new_jnt)
+        new_m_jnt_chain = MJointChain(new_chain)
+        new_m_jnt_chain.parent_all()
+        new_m_jnt_chain.freeze()
 
 
 class MTripleJointChain(MJointChain):

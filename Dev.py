@@ -2,7 +2,7 @@ import sys
 import logging
 
 import maya.cmds as mc
-import maya.api.OpenMaya as om
+# import maya.api.OpenMaya as om
 
 from XBase.MShape import MNurbsSurfaceShape
 from XBase.MTransform import MJoint, MLocator
@@ -124,9 +124,9 @@ def dev_component():
     # jc = MJointChain.create([f'jnt_{i}' for i in range(7)])
     # for jnt in jc[1:]:
     #     jnt.tx.mount(1)
-    # cp = MComponent.SurfaceBaseTwistComponent('LF_Arm_01', jc)
-    # cp.build()
-    print(jc[0].tx.default_value)
+    cp = MComponent.IKFKComponent('LF_Arm_01', jc)
+    cp.build()
+
 
 def dev_create_skinned_mesh():
     from XBase import MTransform as mt
@@ -151,11 +151,12 @@ def dev_save_data():
 def dev_geo():
     from XBase.MConstant import Axis
     from XBase.MGeometry import MNurbsCurve
-    curve = MNurbsCurve.create_by_prototype('test_cube','Cube')
-    curve.shape.set_color([1,1,0])
-    curve.shape.set_rotate(Axis.X,45)
+    curve = MNurbsCurve.create_by_prototype('test_cube', 'Cube')
+    curve.shape.set_color([1, 1, 0])
+    curve.shape.set_rotate(Axis.X, 45)
     curve.replace_shape_by_prototype('Circle')
-    curve.shape.set_scale([10,1,1])
+    curve.shape.set_scale([10, 1, 1])
+
 
 def dev_generate_node_slot():
     from XBase import BuildNodeCache
@@ -670,7 +671,26 @@ def dev_spline():
     locator.match_pos([i for i in list(point)[:3]])
 
 
+def dev_resample_jnt():
+    from XBase.MTransform import MJointChain
+    sel = mc.ls(sl=True)
+    jc = MJointChain(sel)
+    jc.resample_by_proportion(12)
+
+
+def dev_blueprint():
+    import XModules.MBlueprint as mb
+    bp = mb.MBlueprintArm('LF_Arm_01')
+    bp.create_initial_skeleton()
+
+
+def dev_mmesh():
+    from XModules.MBlueprint import IndicatorPlane
+    plane = IndicatorPlane('LF_Arm_01')
+    plane.build()
+
+
 if __name__ == '__main__':
     # help(om.MVector)
     standalone()
-    dev_build_node_slot()
+    dev_component()

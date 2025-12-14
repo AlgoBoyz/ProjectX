@@ -24,7 +24,11 @@ from XBase.MBaseFunctions import StrUtils
 
 
 def get_maya_main_window():
-    return shiboken6.wrapInstance(int(MQtUtil().mainWindow()), QWidget)
+    try:
+        instance = shiboken6.wrapInstance(int(MQtUtil().mainWindow()), QWidget)
+    except NameError:
+        instance = shiboken2.wrapInstance(int(MQtUtil().mainWindow()), QWidget)
+    return instance
 
 
 class HSeparator(QFrame):

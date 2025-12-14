@@ -91,8 +91,10 @@ class IKComponent(object):
                                              solver=self.config.solver)
         self.ik_handle = mt.MTransform(ik_handle)
         self.ik_handle.rename(f'{self.alias}_IkHandle')
+        self.ik_handle.match(self.joint_chain[-1])
         self.ik_handle_grp = self.ik_handle.insert_parent(f'{self.ik_handle.name}_Grp')
         self.ik_handle_grp.match(self.joint_chain[2])
+        self.ik_handle.set_parent(self.ik_handle_grp)
         self.ik_effector = mt.MTransform(ik_effector)
         if self.pole_vec_loc:
             mc.poleVectorConstraint(self.pole_vec_loc, self.ik_handle)
@@ -107,6 +109,10 @@ class IKComponent(object):
                                              name=f'{self.alias}_IkHandle_Ctrl',
                                              prototype=self.config.ik_handle_ctrl_prototype,
                                              suffix=['Grp', 'Offset'])
+        # self.ik_ctrl.transform.add_attr(attr_name='stretch',
+        #                                 proxy=f'{self.ctrl_value_node}.stretch')
+        # self.ik_ctrl.transform.add_attr(attr_name='lock',
+        #                                 proxy=f'{self.ctrl_value_node}.lock')
         self.pv_ctrl = MNurbsCurve.create_on(self.pole_vec_loc,
                                              name=f'{self.alias}_PV_Ctrl',
                                              prototype=self.config.ik_handle_ctrl_prototype,
@@ -457,12 +463,11 @@ class SurfaceBaseTwistComponent(object):
                                                [u, 0.5],
                                                aim_axis=Axis.X.name,
                                                up_axis=Axis.Y.name)
-            jnt_parent = jnt.insert_parent(f'{jnt.name}_Grp')
             jnts.append(jnt)
-
             fol = self.surface.create_follicle_on(f'{self.alias}_{i + 1:02d}_Fol',
                                                   [u, 0.5])
-            # jnt_parent.set_parent(fol)
+            jnt.insert_parent(f'{jnt.name}_Grp')
+
         self.twist_joints = mt.MJointSet(jnts)
 
     def _create_control_joint(self):
@@ -495,3 +500,5 @@ class SurfaceBaseTwistComponent(object):
 
     def _setup_surface_weight(self):
         pass
+
+

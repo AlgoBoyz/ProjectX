@@ -21,12 +21,13 @@ class ConditionOperation(object):
     LessThan = 4
     LessOrEqual = 5
 
-class ControllerPrototype(object):
 
+class ControllerPrototype(object):
     Cube = 0
     Circle = 1
     ForwardCircle = 2
     SquareCircle = 3
+
 
 class AttrType(object):
     Message = 'message'
@@ -87,10 +88,9 @@ class Matrix(enum.Enum):
 
 class GlobalConfig(object):
     transform_root = ''
-    joint_root = ''
     locator_root = ''
 
-    attrs = ['transform_root', 'joint_root', 'locator_root']
+    attrs = ['transform_root', 'locator_root']
 
     @classmethod
     def set_root(cls, root):

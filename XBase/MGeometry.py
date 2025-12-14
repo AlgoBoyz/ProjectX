@@ -9,30 +9,31 @@ from XBase.MTransform import MTransform
 from XBase.MShape import MNurbsCurveShape, MNurbsSurfaceShape
 from XBase.MData import MCurveData, MWeightData
 from XTools.XFileTool import JsonFile
-
-
-# from .MTransform import MTransform
+from XBase.MBaseFunctions import get_child
 
 
 class MMesh(object):
     _CREATE_STR = 'polyPlane'
 
-    def __init__(self, shape_node):
-        super().__init__(shape_node)
+    def __init__(self, transform, shape):
+        self.transform = transform
+        if 'Shape' not in shape:
+            raise RuntimeError(f'Failed to initiate MMesh({transform, shape})\n'
+                               f'Something may go wrong with shape name:{shape}')
+        self.shape = shape
 
     @classmethod
     def create(cls, name=None, **kwargs):
         if not name:
             name = cls._CREATE_STR
-        node = mc.polyPlane(name=name)[1]
-        return cls(node)
+        target_func = getattr(mc, cls._CREATE_STR)
+
+        node = target_func(name=name, **kwargs)[0]
+        shape = get_child(node)
+        return cls(node, shape)
 
     def export_weight(self):
         pass
-
-    @property
-    def vert_num(self):
-        return om.MFnMesh(self.dp_node).numVertices
 
 
 class MNurbsCurve(object):
@@ -69,12 +70,13 @@ class MNurbsCurve(object):
 
     def replace_shape_by_prototype(self, prototype):
         mc.delete(self.shape.shape_name)
-        new_curve = self.create_by_prototype(f'{self.transform.name}_tmp_curve',prototype)
+        new_curve = self.create_by_prototype(f'{self.transform.name}_tmp_curve', prototype)
         new_curve.transform.match(self.transform)
-        mc.parent(new_curve.shape.shape_name,self.transform.name,shape=True,addObject=True)
+        mc.parent(new_curve.shape.shape_name, self.transform.name, shape=True, addObject=True)
         self.shape = new_curve.shape
-        mc.rename(self.shape.shape_name,f'{self.transform.name}Shape')
+        mc.rename(self.shape.shape_name, f'{self.transform.name}Shape')
         mc.delete(new_curve.transform.name)
+
     @classmethod
     def create_on(cls, other: MTransform, name='', prototype='', suffix=None):
         if not name:

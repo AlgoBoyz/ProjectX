@@ -4,6 +4,7 @@ import maya.api.OpenMaya as om
 
 from contextlib import contextmanager
 
+
 @contextmanager
 def undo_stack():
     mc.undoInfo(openChunk=True)
@@ -12,14 +13,29 @@ def undo_stack():
     mc.undoInfo(closeChunk=True)
     print('Close undo chunk')
 
+
+@contextmanager
+def switch_space_root(space_root):
+    from XBase.MConstant import GlobalConfig
+    GlobalConfig.set_root(space_root)
+    print(f'Space root switched to {space_root}')
+    yield
+    GlobalConfig.reset_root()
+    print(f'Space root reset')
+
+
 def check_exist(node_name):
     if not mc.objExists(node_name):
         raise RuntimeError(f'{node_name} do not exist')
-def check_type(node_name,obj_type):
+
+
+def check_type(node_name, obj_type):
     in_type = mc.objectType(node_name)
     if not in_type == obj_type:
         print(in_type == obj_type)
         raise RuntimeError(f'{node_name}({in_type}) is not {obj_type}')
+
+
 def get_list_types(lst: list):
     if not lst:
         raise RuntimeError(f'List:{lst} is empty!')
@@ -83,8 +99,6 @@ def get_joint_pos_array(joints):
     pass
 
 
-
-
 def get_third_axis(axis1, axis2):
     from XBase.MConstant import Axis
     all_axis = [Axis.X, Axis.Y, Axis.Z]
@@ -105,7 +119,7 @@ def List2MVector(lst):
 
 
 def cross_product(v1, v2):
-    print(v1,v2)
+    print(v1, v2)
     x = v1[1] * v2[2] - v1[2] * v2[1]
     y = v1[2] * v2[0] - v1[0] * v2[2]
     z = v1[0] * v2[1] - v1[1] * v2[0]
@@ -121,19 +135,21 @@ def normalize_vector(vector):
 
     return [round(i, 5) for i in [x / norm for x in vector]]
 
-def linear_space(start,end,num):
+
+def linear_space(start, end, num):
     if num < 2:
         raise RuntimeError(f'Number can not less than 2')
-    portion = (end-start)/num
+    portion = (end - start) / num
     lst = []
     current_num = start
     while True:
         lst.append(current_num)
-        current_num+=portion
-        if current_num>=end:
+        current_num += portion
+        if current_num >= end:
             lst.append(end)
             break
     return lst
+
 
 def increase_save():
     file = mc.file(absoluteName=True)
@@ -171,12 +187,12 @@ def get_skin_cluster(mesh):
     return [i for i in mc.listHistory(mesh) if mc.objectType(i) == 'skinCluster'][0] or None
 
 
-def compress_list(lst,limit=2):
+def compress_list(lst, limit=2):
     compressed_lst = []
     zero_counter = 0
-    for i,num in enumerate(lst):
+    for i, num in enumerate(lst):
         if num == 0:
-            zero_counter+=1
+            zero_counter += 1
         else:
             if zero_counter != 0:
                 if zero_counter < limit:
@@ -185,20 +201,22 @@ def compress_list(lst,limit=2):
                 else:
                     compressed_lst.append([zero_counter])
             compressed_lst.append(num)
-            zero_counter=0
-        if i == len(lst)-1 and zero_counter>0:
+            zero_counter = 0
+        if i == len(lst) - 1 and zero_counter > 0:
             compressed_lst.append([zero_counter])
     return compressed_lst
+
 
 def decompress_lst(lst):
     decompressed_lst = []
     for comp in lst:
-        if isinstance(comp,list):
+        if isinstance(comp, list):
             for i in range(comp[0]):
                 decompressed_lst.append(0.0)
         else:
             decompressed_lst.append(comp)
     return decompressed_lst
+
 
 class StrUtils(object):
 
@@ -211,60 +229,65 @@ class StrUtils(object):
         new_string = ' '.join(chars)
         return new_string
 
-def arg_match_attr(arg,attr_name):
+
+def arg_match_attr(arg, attr_name):
     from XBase.MConstant import AttrType
-    attr_type = mc.getAttr(attr_name,type=True)
+    attr_type = mc.getAttr(attr_name, type=True)
     if attr_type in AttrType.ValueType:
-        if not isinstance(arg,int) or isinstance(arg,float):
+        if not isinstance(arg, int) or isinstance(arg, float):
             return False
         else:
             return True
     elif attr_type in AttrType.CompoundType:
-        if isinstance(arg,list) or isinstance(arg,tuple):
+        if isinstance(arg, list) or isinstance(arg, tuple):
             if len(arg) == 3:
                 return True
             else:
                 return False
-        elif isinstance(arg,int) or isinstance(arg,float):
+        elif isinstance(arg, int) or isinstance(arg, float):
             return True
         else:
             return False
     else:
         return False
 
+
 def timer():
     import time
     start_time = time.time()
+
 
 class OMUtils(object):
 
     @staticmethod
     def get_dependency_node(node_name):
-        sel_list :om.MSelectionList= om.MGlobal.getSelectionListByName(node_name)
+        sel_list: om.MSelectionList = om.MGlobal.getSelectionListByName(node_name)
         dp = sel_list.getDependNode(0)
         return dp
 
     @staticmethod
     def get_dag_path(node_name):
-        sel_list :om.MSelectionList= om.MGlobal.getSelectionListByName(node_name)
+        sel_list: om.MSelectionList = om.MGlobal.getSelectionListByName(node_name)
         dag = sel_list.getDagPath(0)
         return dag
 
     @staticmethod
-    def get_mesh_component(mesh,idx=None):
+    def get_mesh_component(mesh, idx=None):
         mesh_fn = om.MFnMesh(OMUtils.get_dependency_node(mesh))
         single_comp = om.MFnSingleIndexedComponent()
         mo = single_comp.create(om.MFn.kMeshVertComponent)
         if idx is None:
             single_comp.addElements([i for i in range(mesh_fn.numVertices)])
-        elif isinstance(idx,list) or isinstance(idx,tuple):
-                single_comp.addElements(idx)
-        elif isinstance(idx,int):
+        elif isinstance(idx, list) or isinstance(idx, tuple):
+            single_comp.addElements(idx)
+        elif isinstance(idx, int):
             single_comp.addElement(idx)
         else:
             raise RuntimeError(f'Wrong index :{idx}')
 
         return mo
+
+
 if __name__ == '__main__':
-    res = linear_space(0,1,5)
+    res = linear_space(0, 1, 5)
     print(res)

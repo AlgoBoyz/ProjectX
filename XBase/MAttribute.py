@@ -78,7 +78,8 @@ class MAttribute(object):
 
     def mount(self, other, force=True, inverse=False):
         """
-        挂载属性，可以挂载常数，常数列表，亦可挂载另一个属性，或者一个属性列表,基本上就是将connectAttr跟setAttr合并起来，方便后续节点图的编写
+        挂载属性，可以挂载常数，常数列表，亦可挂载另一个属性，或者一个属性列表
+        基本上就是将connectAttr跟setAttr合并起来，方便后续节点图的编写
         """
         if isinstance(other, str):
             if not mc.objExists(other):
@@ -144,6 +145,7 @@ class MAttribute(object):
                              'rotateX', 'rotateY', 'rotateZ',
                              'tx', 'ty', 'tz',
                              'rx', 'ry', 'rz']
+        single_axis_attrs2 = ['scaleX', 'scaleY', 'scaleZ', 'sx', 'sy', 'sz']
         if self.attr_name in ['translate', 'rotate', 't', 'r']:
             self.set([0, 0, 0])
         elif self.attr_name in ['scale', 's']:
@@ -151,6 +153,8 @@ class MAttribute(object):
 
         elif self.attr_name in single_axis_attrs:
             self.set(0)
+        elif self.attr_name in single_axis_attrs2:
+            self.set(1)
         elif self.attr_name in ['v', 'visibility']:
             self.set(1)
         else:

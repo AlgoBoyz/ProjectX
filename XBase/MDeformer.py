@@ -1,4 +1,3 @@
-from maya.cmds import weightsColor
 
 from maya.api.OpenMayaAnim import MFnSkinCluster
 
