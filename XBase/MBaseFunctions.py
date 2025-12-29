@@ -192,20 +192,19 @@ def get_skin_cluster(mesh):
 def compress_list(lst, limit=2):
     compressed_lst = []
     zero_counter = 0
-    for i, num in enumerate(lst):
+    for num in enumerate(lst):
         if num == 0:
             zero_counter += 1
         else:
             if zero_counter != 0:
                 if zero_counter < limit:
-                    for _ in range(zero_counter):
-                        compressed_lst.append(0.0)
+                    compressed_lst.extend([0.0] * zero_counter)
                 else:
                     compressed_lst.append([zero_counter])
             compressed_lst.append(num)
             zero_counter = 0
-        if i == len(lst) - 1 and zero_counter > 0:
-            compressed_lst.append([zero_counter])
+    if zero_counter > 0:
+        compressed_lst.extend([0.0] * zero_counter)
     return compressed_lst
 
 
