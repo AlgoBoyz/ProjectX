@@ -2,10 +2,13 @@ import logging
 from typing import Union
 
 import maya.cmds as mc
+import maya.api.OpenMayaAnim as oma
+import maya.api.OpenMaya as om
 
 from XBase import MTransform as mt
-from XBase.MBaseFunctions import linear_space
-from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype, Axis
+from XBase.MBaseFunctions import linear_space, switch_space_root, OMUtils
+from XBase.MConstant import AttrType, GlobalConfig, ConditionOperation, ParentType, ControllerPrototype, Axis, \
+    WorldUpType
 from XBase.MGeometry import MNurbsCurve, MNurbsSurface
 from XBase.MNodes import MNode
 from XBase.MShape import MNurbsSurfaceShape
@@ -417,7 +420,8 @@ class SurfaceBaseTwistComponentConfig(object):
         self.enable_wave = True
         self.enable_fk = False
         self.ik_ctrl_count = 5
-        self.plane_span = 2
+
+        self.is_upper = True
 
 
 class SurfaceBaseTwistComponent(object):
@@ -431,16 +435,17 @@ class SurfaceBaseTwistComponent(object):
         if self.config.pre_build_func:
             self.config.pre_build_func()
         self.cache_grp = mt.MTransform.create(f'{self.alias}_Cache_Grp')
-        GlobalConfig.set_root(self.cache_grp.name)
-        self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp')
-        self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
 
     def build(self):
         self.pre_build()
-        self._create_surface()
-        self._create_twist_joints()
-        self._create_control_joint()
-        self._setup_surface_weight()
+        with switch_space_root(self.cache_grp.name):
+            self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp')
+            self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
+            self._create_surface()
+            self._create_twist_joints()
+            self._create_control_joint()
+            self._setup_surface_weight()
+            self._rearrange_hierarchy()
 
     def _create_surface(self):
         surface_transform, make_surface = mc.nurbsPlane(name=f'{self.alias}_Surface', axis=(0, 1, 0))
@@ -448,11 +453,11 @@ class SurfaceBaseTwistComponent(object):
         self.surface = MNurbsSurface(mt.MTransform(surface_transform), MNurbsSurfaceShape(surface_shape))
         self.surface.transform.match(self.joint_chain[0])
         self.surface_maker = MNode(make_surface)
-        self.surface_maker.patchesU.set(self.config.plane_span)
-        self.surface_maker.patchesV.set(1)
         self.surface_maker.pivotX.set(0.5 * self.joint_chain[1].tx.value)
         self.surface_maker.width.set(self.joint_chain[1].tx)
         self.surface_maker.lengthRatio.set(0.1)
+
+        # mc.delete(surface_shape,constructionHistory=True)
 
     def _create_twist_joints(self):
         u_array = linear_space(0, 1, self.config.ik_ctrl_count - 1)
@@ -466,39 +471,66 @@ class SurfaceBaseTwistComponent(object):
             jnts.append(jnt)
             fol = self.surface.create_follicle_on(f'{self.alias}_{i + 1:02d}_Fol',
                                                   [u, 0.5])
+            self.follicles.append(fol)
             jnt.insert_parent(f'{jnt.name}_Grp')
+            jnt.parent.set_parent(fol)
 
         self.twist_joints = mt.MJointSet(jnts)
 
     def _create_control_joint(self):
-        self.start_ctrl_jnt = mt.MJoint.create(f'{self.alias}_Ctrl_Jnt', match=self.joint_chain[0])
-        self.end_bind_jnt = mt.MJoint.create(f'{self.alias}_CtrlTipBind_Jnt',
-                                             match=self.twist_joints[-1])
-        self.end_ctrl_jnt = mt.MJoint.create(f'{self.alias}_CtrlTip_Jnt',
-                                             match=self.twist_joints[-1])
-        mc.pointConstraint(self.end_ctrl_jnt, self.end_bind_jnt)
+        if self.config.is_upper:
+            self.upper_ik_jc = mt.MJointChain.create([f'{self.alias}_IK_Jnt', f'{self.alias}_IKTip_Jnt', ])
+            self.upper_ik_jc[0].match(self.joint_chain[0])
+            self.upper_ik_jc[-1].match(self.joint_chain[-1])
+            handle = mc.ikHandle(solver='ikSCsolver',
+                                 startJoint=self.upper_ik_jc[0].name,
+                                 endEffector=self.upper_ik_jc[1].name,
+                                 name=f'{self.alias}_IkHandle')[0]
+            self.upper_ik_Handle = mt.MTransform(handle)
 
-        self.mid_ctrl_jnt = self.surface.create_joint_on(joint_name=f'{self.alias}_CtrlMid_Jnt',
-                                                         uv=[0.5, 0.5],
-                                                         aim_axis=Axis.X.name,
-                                                         up_axis=Axis.Y.name)
+            mc.pointConstraint(self.joint_chain[-1],
+                               self.upper_ik_Handle.name)
 
-        mc.parentConstraint(self.start_ctrl_jnt.name, self.end_ctrl_jnt.name, self.mid_ctrl_jnt.name)
+        self.twist_tip_jnt = mt.MJoint.create(f'{self.alias}_TipTwist_Jnt',
+                                              match=self.joint_chain[-1])
 
-        mc.aimConstraint(self.end_ctrl_jnt.name,
-                         self.start_ctrl_jnt.name,
-                         aimVector=[1, 0, 0],
+        mc.aimConstraint(self.joint_chain[0],
+                         self.twist_tip_jnt.name,
+                         aimVector=[-1, 0, 0],
+                         upVector=[0, 1, 0],
                          worldUpType='objectrotation',
-                         worldUpObject=self.end_ctrl_jnt.name,
-                         worldUpVector=[0, 1, 0],
-                         upVector=[0, 1, 0])
+                         worldUpObject=self.joint_chain[-1],
+                         worldUpVector=[0, 1, 0])
 
-        mc.skinCluster(self.surface.shape.shape_name,
-                       self.start_ctrl_jnt.name,
-                       self.end_bind_jnt.name,
-                       self.mid_ctrl_jnt.name)
+        mc.pointConstraint(self.joint_chain[-1],
+                           self.twist_tip_jnt.name)
+        if self.config.is_upper:
+            mc.skinCluster(self.surface.transform.name,
+                           [self.twist_tip_jnt.name, self.upper_ik_jc[0].name],
+                           toSelectedBones=True)
+        else:
+            mc.skinCluster(self.surface.transform.name,
+                           [self.twist_tip_jnt.name, self.joint_chain[0].name],
+                           toSelectedBones=True)
+
+        self._setup_surface_weight()
 
     def _setup_surface_weight(self):
-        pass
+        weight = [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
+                  0.333, 0.667, 0.333, 0.667, 0.333, 0.667, 0.333, 0.667,
+                  0.667, 0.333, 0.667, 0.333, 0.667, 0.333, 0.667, 0.333,
+                  1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]
+        cv = OMUtils.get_nurbs_component(self.surface.shape.name)
+        skin_fn = oma.MFnSkinCluster(OMUtils.get_dependency_node(self.surface.shape.skin_cluster))
 
+        skin_fn.setWeights(self.surface.shape.dag_path,
+                           cv,
+                           om.MIntArray([0, 1]),
+                           om.MDoubleArray(weight))
 
+    def _rearrange_hierarchy(self):
+        self.surface.transform.set_parent(self.cache_grp.name)
+        for fol in self.follicles:
+            mc.parent(fol, self.cache_grp.name)
+        if self.config.is_upper:
+            self.upper_ik_Handle.set_parent(self.cache_grp.name)

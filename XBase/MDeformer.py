@@ -1,4 +1,3 @@
-
 from maya.api.OpenMayaAnim import MFnSkinCluster
 
 import maya.cmds as mc
@@ -6,25 +5,35 @@ import maya.api.OpenMaya as om
 from XBase.MNodes import MNode
 from XBase.MGeometry import MMesh
 from XBase.MData import MWeightData
-from XBase.MBaseFunctions import compress_list,decompress_lst,OMUtils
+from XBase.MBaseFunctions import compress_list, decompress_lst, OMUtils
+
+
 class MSkinCluster(MNode):
     _CREATE_STR = 'skinCluster'
-
     def __init__(self, shape_name, skin_name):
         super().__init__(skin_name)
         self.skin_fn = MFnSkinCluster(self.dp_node)
         self.skin_cluster_node_data = {}
         self.shape_name = shape_name
-        self.shape_mn = MMesh(self.shape_name)
+        self.shape_mn = MMesh(mc.listRelatives(self.shape_name, parent=True)[0], self.shape_name)
         # to collect: name,node_attrs,skin influences,skin weight,deformer weight
 
+    # @classmethod
+    # def create(cls, name=None, **kwargs):
+    #     shape = kwargs.pop('shape', None)
+    #     if shape is None:
+    #         raise RuntimeError(f'Must be created with a shape node')
+    #     skin_cluster = mc.skinCluster()
+    #     return MSkinCluster(skin_cluster)
+
     @classmethod
-    def create(cls, name=None, **kwargs):
-        shape = kwargs.pop('shape', None)
-        if shape is None:
-            raise RuntimeError(f'Must be created with a shape node')
-        skin_cluster = mc.skinCluster()
-        return MSkinCluster(skin_cluster)
+    def get_from_object(cls, obj):
+        sc = [i for i in mc.listHistory(obj) if mc.objectType(i) == 'skinCluster']
+        if not sc:
+            raise RuntimeError(f'Object {obj} has no skin cluster')
+        if mc.objExists(obj) == 'transform':
+            obj = mc.listRelatives(obj, children=True)[0]
+        return MSkinCluster(obj, sc[0])
 
     @classmethod
     def rebuild_from_data(cls, data):
@@ -46,11 +55,11 @@ class MSkinCluster(MNode):
         return indices
 
     def get_weight_array(self, pnt_indices=None, inf_indices=None):
-        shape_dag = self.shape_mn.dag_path
+        shape_dag = self.shape_mn.shape.dag_path
         component_fn = om.MFnSingleIndexedComponent()
         component = component_fn.create(om.MFn.kMeshVertComponent)
         if pnt_indices is None:
-            component_fn.addElements([i for i in range(self.shape_mn.vert_num)])
+            component_fn.addElements([i for i in range(self.shape_mn.shape.vert_num)])
         elif isinstance(pnt_indices, int):
             component_fn.addElement(pnt_indices)
         elif isinstance(pnt_indices, list) or isinstance(pnt_indices, tuple):
@@ -65,25 +74,27 @@ class MSkinCluster(MNode):
         else:
             raise RuntimeError(f'Wrong influence input')
 
-        weight = self.skin_fn.getWeights(shape_dag,component,inf_indices)
+        weight = self.skin_fn.getWeights(shape_dag, component, inf_indices)
         return weight
 
-    def set_weight(self,weight_array,inf_array):
+    def set_weight(self, weight_array, inf_array):
 
         component = OMUtils.get_mesh_component(self.shape_name)
-        if isinstance(weight_array,list):
-            weight_array=om.MDoubleArray(weight_array)
-        if isinstance(inf_array,list):
+        if isinstance(weight_array, list):
+            weight_array = om.MDoubleArray(weight_array)
+        if isinstance(inf_array, list):
             inf_array = om.MIntArray(inf_array)
-        self.skin_fn.setWeights(self.shape_mn.dag_path,component,inf_array,weight_array)
+        self.skin_fn.setWeights(self.shape_mn.shape.dag_path, component, inf_array, weight_array)
 
-    def rearrange_weight(self,weight_array,mapper_lst):
+    def rearrange_weight(self, weight_array, mapper_lst):
         new_array = weight_array
-        for i in range(0,len(weight_array),len(mapper_lst)):
-            chunk = weight_array[i:i+len(mapper_lst)]
-            for j,num in enumerate(chunk):
-                new_array[i+j] = chunk[mapper_lst[j]]
+        for i in range(0, len(weight_array), len(mapper_lst)):
+            chunk = weight_array[i:i + len(mapper_lst)]
+            for j, num in enumerate(chunk):
+                new_array[i + j] = chunk[mapper_lst[j]]
         return new_array
+
+
 class MBlendshape(object):
     __slots__ = ['message', 'caching', 'frozen', 'isHistoricallyInteresting', 'nodeState', 'binMembership', 'input',
                  'weightFunction', 'outputGeometry', 'originalGeometry', 'envelopeWeightsList', 'blockGPU', 'envelope',

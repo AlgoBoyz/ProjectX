@@ -4,9 +4,8 @@ import logging
 import maya.cmds as mc
 # import maya.api.OpenMaya as om
 
-from XBase.MShape import MNurbsSurfaceShape
-from XBase.MTransform import MJoint, MLocator
 from LoggingSetup import setup_global_logger
+from XModules.MComponent import SurfaceBaseTwistComponentConfig
 
 setup_global_logger()
 
@@ -200,7 +199,6 @@ def dev_create_joints(num, alias='', offset=1, parent=True, attr='tx'):
                 mc.parent(jnt, jnts[i - 1])
         if offset and i > 0:
             mc.setAttr(f'{jnt}.{attr}', offset)
-
     return jnts
 
 
@@ -330,6 +328,7 @@ def dev_create_psd_locs():
     # dev_reset_scene()
     # path = r'F:\作品集\Rig\Girl\test_adv_scene.mb'
     # mc.file(path, i=True)
+    import maya.api.OpenMaya as om
     import XBase.MTransform as mt
     from XBase.MMathNode import vectorProduct
     jnt_names = ['Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist']
@@ -374,7 +373,7 @@ def dev_create_psd_locs():
 def dev_MShape():
     from XBase.MData import MCurveData
     from XBase.MGeometry import MNurbsSurface
-    from XBase.MShape import MNurbsCurveShape
+    from XBase.MShape import MNurbsCurveShape, MNurbsSurfaceShape
     from XBase.MTransform import MTransform
     from XBase.MConstant import Axis
     surface = MNurbsSurface(MTransform('LF_Arm_01_Twist_Surface'), MNurbsSurfaceShape('LF_Arm_01_Twist_SurfaceShape'))
@@ -596,6 +595,7 @@ def dev_create_tip():
 
 
 def dev_skin_weight():
+    from XBase.MTransform import MJoint
     dev_reset_scene()
     path = r'F:\TMP\test.fbx'
     if not mc.pluginInfo("fbxmaya", q=True, loaded=True):
@@ -674,23 +674,58 @@ def dev_spline():
 def dev_resample_jnt():
     from XBase.MTransform import MJointChain
     sel = mc.ls(sl=True)
-    jc = MJointChain(sel)
+    jc = MJointChain(sel)[0]
     jc.resample_by_proportion(12)
 
 
 def dev_blueprint():
     import XModules.MBlueprint as mb
-    bp = mb.MBlueprintArm('LF_Arm_01')
-    bp.create_initial_skeleton()
+    # bp = mb.MBlueprintArm('LF_Arm_01')
+    # bp.create_initial_skeleton()
+
+    bp = mb.MBlueprintArm.initial_from_scene('LF_Arm_01')
 
 
 def dev_mmesh():
-    from XModules.MBlueprint import IndicatorPlane
-    plane = IndicatorPlane('LF_Arm_01')
-    plane.build()
+    from XModules.MBlueprint import IndicatorPlane, MBlueprintArm
+    bp_arm = MBlueprintArm('LF_Arm_01')
+    bp_arm.create_initial_skeleton()
+    bp_arm.specular_joint_chain[0].rotateZ.mount(-30)
+    plane = IndicatorPlane.create(f'LF_Arm_01_Indicator')
+    plane.match_joint_chain(bp_arm.joint_chains[1])
+
+
+def dev_surface_component():
+    from XBase.MTransform import MJointChain
+    from XModules.MComponent import SurfaceBaseTwistComponent
+    from XModules.MComponent import SurfaceBaseTwistComponentConfig
+    jc = MJointChain.create(['jnt1', 'jnt2', 'jnt3'])
+    jc[1].tx.mount(4)
+    jc[2].tx.mount(4)
+    comp1 = SurfaceBaseTwistComponent(alias='LF_Arm_01_Upper', joint_chain=jc[:-1])
+    comp1.build()
+    comp2_config = SurfaceBaseTwistComponentConfig()
+    comp2_config.is_upper = False
+    comp2 = SurfaceBaseTwistComponent(alias='LF_Arm_01_Lower', joint_chain=jc[1:], config=comp2_config)
+    comp2.build()
+
+
+def dev_print_selected_weight():
+    import XBase.MDeformer as md
+    import maya.api.OpenMayaAnim as oma
+    import maya.api.OpenMaya as om
+    from XBase.MBaseFunctions import OMUtils
+    sel = mc.ls(selection=True)[0]
+    dp = OMUtils.get_dependency_node('skinCluster1')
+    skin_fn = oma.MFnSkinCluster(dp)
+    cv = OMUtils.get_nurbs_component(sel)
+    dag = OMUtils.get_dag_path(sel)
+    print(dag)
+    weight = list(skin_fn.getWeights(dag, cv)[0])
+    print(weight)
+    print(skin_fn.getWeights(dag, cv))
 
 
 if __name__ == '__main__':
-    # help(om.MVector)
     standalone()
-    dev_component()
+    dev_surface_component()

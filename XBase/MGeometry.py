@@ -5,6 +5,7 @@ from typing import Union
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 
+from XBase.MNodes import MNode
 from XBase.MTransform import MTransform
 from XBase.MShape import MNurbsCurveShape, MNurbsSurfaceShape
 from XBase.MData import MCurveData, MWeightData
@@ -16,24 +17,22 @@ class MMesh(object):
     _CREATE_STR = 'polyPlane'
 
     def __init__(self, transform, shape):
-        self.transform = transform
+        self.transform = MTransform(transform)
         if 'Shape' not in shape:
             raise RuntimeError(f'Failed to initiate MMesh({transform, shape})\n'
                                f'Something may go wrong with shape name:{shape}')
-        self.shape = shape
+        self.shape = MMeshShape(shape)
 
     @classmethod
     def create(cls, name=None, **kwargs):
         if not name:
             name = cls._CREATE_STR
+        # 根据_CREATE_STR检索cmds库中的创建函数并运行
         target_func = getattr(mc, cls._CREATE_STR)
 
         node = target_func(name=name, **kwargs)[0]
         shape = get_child(node)
         return cls(node, shape)
-
-    def export_weight(self):
-        pass
 
 
 class MNurbsCurve(object):
@@ -128,3 +127,13 @@ class MNurbsSurface(object):
         mc.setAttr(f'{fol_shape}.parameterU', uv[0])
         mc.setAttr(f'{fol_shape}.parameterV', uv[1])
         return fol_transform
+
+
+class MMeshShape(MNode):
+
+    def __init__(self, shape):
+        super().__init__(shape)
+
+    @property
+    def vert_num(self):
+        pass

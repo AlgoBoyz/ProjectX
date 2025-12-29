@@ -138,8 +138,8 @@ class MNode(VirtualNode):
     _CREATE_STR = 'MNodeBase'
 
     def __init__(self, name):
-        if name is None:
-            raise RuntimeError(f'Can not initialize from None')
+        if name is None or name == '':
+            raise RuntimeError(f'Can not initialize from None or empty string:{name}')
         if isinstance(name, self.__class__):
             print(f'Initializing from {self.__class__}')
             self.name = name.name
@@ -187,6 +187,7 @@ class MNode(VirtualNode):
     def all_attrs(self):
         attrs = mc.attributeInfo(allAttributes=True, type=self._CREATE_STR)
         print(attrs)
+        return attrs
 
     @property
     def node_type(self):
@@ -217,7 +218,7 @@ class MNode(VirtualNode):
     def add_to_set(self, set_name):
         pass
 
-    def rename(self, new_name,parent_instance=None):
+    def rename(self, new_name, parent_instance=None):
         old_name = self.name
         mc.rename(self.name, new_name)
         self.name = new_name
@@ -225,7 +226,49 @@ class MNode(VirtualNode):
             name_idx = parent_instance.node_names.index(old_name)
             parent_instance.node_names[name_idx] = new_name
             parent_instance.nodes[name_idx] = parent_instance.MEMBER_TYPE(new_name)
+
     def attr(self, item):
 
         return MAttribute(self.name, item)
 
+
+# todo:未来应新增一个MShaderNode.py文件，把这个类放进去
+class MSurfaceShaderNode(MNode):
+    _CREATE_STR = 'surfaceShader'
+    DEFAULT_COLOR = [1, 1, 1]
+    DEFAULT_TRANSPARENCY = [1, 1, 1]
+
+    def __init__(self, name):
+        super().__init__(name)
+
+    @classmethod
+    def create(cls, name=None, **kwargs):
+        color = kwargs.pop('color', cls.DEFAULT_COLOR)
+        transparency = kwargs.pop('transparency', cls.DEFAULT_TRANSPARENCY)
+        shading_grp = kwargs.pop('shading_grp', 'initialShadingGroup')
+        if kwargs:
+            raise RuntimeError(f'Not supported kwarg:{kwargs}')
+        if name is None:
+            name = 'surfaceShader'
+        node = mc.createNode(cls._CREATE_STR, name=name)
+        mc.setAttr(f'{node}.outColor', *color, type='double3')
+        mc.setAttr(f'{node}.outTransparency', *transparency, type='double3')
+        if shading_grp != 'initialShadingGroup':
+            try:
+                shading_grp = mc.sets(name=shading_grp,
+                                      renderable=True,
+                                      noSurfaceShader=True,
+                                      empty=True)
+            except Exception as e:
+                raise RuntimeError(f'Failed to create set:{shading_grp}\n{e}')
+
+        mc.connectAttr(f'{node}.outColor', f'{shading_grp}.surfaceShader')
+        return cls(node)
+
+    @property
+    def shading_grp(self):
+        return mc.listConnections(f'{self.name}.outColor', source=True, destination=True)[0] or 'initialShadingGroup'
+
+    def apply_to(self, objs):
+        # obj.f[0] or obj
+        mc.sets(objs, edit=True, forceElement=self.shading_grp)

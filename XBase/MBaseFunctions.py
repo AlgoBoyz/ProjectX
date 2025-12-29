@@ -1,8 +1,10 @@
+from __future__ import annotations
+from contextlib import contextmanager
 import math
+
 import maya.cmds as mc
 import maya.api.OpenMaya as om
-
-from contextlib import contextmanager
+import maya.api.OpenMayaAnim as oma
 
 
 @contextmanager
@@ -286,6 +288,16 @@ class OMUtils(object):
             raise RuntimeError(f'Wrong index :{idx}')
 
         return mo
+
+    @staticmethod
+    def get_nurbs_component(nurbs_name, cv=None):
+        comp_fn = om.MFnDoubleIndexedComponent()
+        comp = comp_fn.create(om.MFn.kSurfaceCVComponent)
+        nurbs_fn = om.MFnNurbsSurface(OMUtils.get_dependency_node(nurbs_name))
+        if cv is None:
+            cv = [[i, j] for i in range(nurbs_fn.numCVsInU) for j in range(nurbs_fn.numCVsInV)]
+        comp_fn.addElements(cv)
+        return comp
 
 
 if __name__ == '__main__':

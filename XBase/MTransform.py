@@ -36,7 +36,6 @@ class MTransform(MNode):
             mc.xform(node, worldSpace=True, translation=pos)
         if GlobalConfig.transform_root and not under:
             mc.parent(node, GlobalConfig.transform_root)
-
         return cls(node)
 
     @property
@@ -174,6 +173,8 @@ class MTransform(MNode):
     def move_by(self, vec, world=True):
         if isinstance(vec, list) and len(vec) == 3:
             vec = om.MVector(*vec)
+        elif isinstance(vec, om.MVector):
+            pass
         else:
             raise RuntimeError(f'Wrong vector format:{vec}')
         pos_after = self.world_pos + vec if world else self.local_pos + vec
@@ -369,6 +370,8 @@ class MJointChain(MJointSet):
     def create(cls, joints: list[str]) -> 'MJointChain':
         instance = super().create(joints)
         instance.parent_all()
+        if GlobalConfig.transform_root:
+            instance[0].set_parent(GlobalConfig.transform_root)
         return cls(instance.node_names)
 
     @property
@@ -528,7 +531,7 @@ class MTripleJointChain(MJointChain):
         return cross_product(self.vec_ab, self.vec_bc)
 
     def get_pole_vec_pos(self, multiplier=2):
-        vec: om.MVector = multiplier * self.pv_vec
+        vec: om.MVector = self.pv_vec * multiplier
         pv_pos = self[1].world_pos + vec
         return pv_pos
 

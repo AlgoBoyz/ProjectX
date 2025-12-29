@@ -4,7 +4,6 @@ import os
 import sys
 
 PROJECT_BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-print(PROJECT_BASE_DIR)
 
 
 class Sign(enum.Enum):
@@ -121,3 +120,5 @@ class GlobalConfig(object):
     }
     if sys.version_info.minor == 11:
         SUPPORTED_DICT['vector*vector'] = 'dotProduct'
+
+
