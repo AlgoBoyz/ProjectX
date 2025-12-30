@@ -50,6 +50,26 @@ def get_list_types(lst: list):
     return list_types[0] if len(list_types) == 1 else list_types
 
 
+def get_selected_transform():
+    sel = mc.ls(selection=True)
+    if not sel:
+        raise RuntimeError(f'Select source mesh:{sel}')
+    if mc.objectType(sel[0]) in ['mesh', 'nurbsCurve', 'nurbsSurface']:
+        sel = mc.listRelatives(sel, parent=True)
+    return sel[0]
+
+
+def get_selected_shape():
+    sel = mc.ls(selection=True)
+    if not sel:
+        raise RuntimeError(f'Select source mesh:{sel}')
+    if mc.objectType(sel[0]) == 'transform':
+        sel = mc.listRelatives(sel, children=True)
+        if not sel:
+            raise RuntimeError(f'Select source mesh:{sel}')
+    return sel[0]
+
+
 def check_list_exist(lst):
     exist = True
     for i in lst:
@@ -192,7 +212,7 @@ def get_skin_cluster(mesh):
 def compress_list(lst, limit=2):
     compressed_lst = []
     zero_counter = 0
-    for num in enumerate(lst):
+    for num in lst:
         if num == 0:
             zero_counter += 1
         else:

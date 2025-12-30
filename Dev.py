@@ -1,10 +1,14 @@
 import sys
 import logging
+from random import uniform
 
 import maya.cmds as mc
+from setuptools.command.alias import alias
+
 # import maya.api.OpenMaya as om
 
 from LoggingSetup import setup_global_logger
+from XBase.MBaseFunctions import get_selected_transform
 from XModules.MComponent import SurfaceBaseTwistComponentConfig
 
 setup_global_logger()
@@ -724,6 +728,25 @@ def dev_print_selected_weight():
     weight = list(skin_fn.getWeights(dag, cv)[0])
     print(weight)
     print(skin_fn.getWeights(dag, cv))
+
+
+def dev_create_joint_from_spline():
+    from XBase.MTransform import MJointChain
+    from XBase.MBaseFunctions import get_selected_transform
+    spline = get_selected_transform()
+    print(spline)
+    jc = MJointChain.create_from_spline(alias='MD_Spine_01',
+                                        spline=spline,
+                                        count=-1)
+
+
+def dev_spline_twist():
+    from XModules.MComponent import CurveBaseTwistComponent, CurveBaseTwistComponentConfig
+    from XBase.MBaseFunctions import get_selected_transform
+    comp = CurveBaseTwistComponent.init_from_spline(alias='MD_Spine_01',
+                                                    spline=get_selected_transform(),
+                                                    count=5,
+                                                    uniformed=False)
 
 
 if __name__ == '__main__':

@@ -133,7 +133,7 @@ class multiplyDivide(MathNode):
                         f'multiplyDivide:Require list or tuple in length of 3,got {attr_in}({len(attr_in)}) instead')
                 target_attr.set(attr_in)
             elif isinstance(attr_in, str):
-                mattr = MAttribute.create_by_name(attr_in)
+                mattr = MAttribute.create_from_attr_name(attr_in)
                 mattr.connect(target_attr)
             elif isinstance(attr_in, MAttribute):
                 attr_in.mount(target_attr)
@@ -263,7 +263,7 @@ class distanceBetween(MathNode):
                 raise RuntimeError(f'Not legal point({point}) to calculate distance.')
             target_attr.mount(point)
         if isinstance(point, str):
-            point = MAttribute.create_by_name(point)
+            point = MAttribute.create_from_attr_name(point)
         point.mount(target_attr)
 
 
@@ -314,7 +314,7 @@ class MMultiply(object):
 
             mattr = None
             if isinstance(i, str):
-                mattr = MAttribute.create_by_name(i)
+                mattr = MAttribute.create_from_attr_name(i)
             elif isinstance(i, MAttribute):
                 mattr = i
 

@@ -39,6 +39,8 @@ class MNurbsCurve(object):
 
     def __init__(self, transform: MTransform, shape: Union[MNurbsCurveShape, None]):
         self.transform = transform
+        if shape is None:
+            shape = MNurbsCurveShape(get_child(transform.name))
         self.shape = shape
 
     @classmethod

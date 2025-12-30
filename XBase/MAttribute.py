@@ -23,6 +23,7 @@ class MAttribute(object):
         return self.full_name
 
     def __getitem__(self, item):
+        # todo:重构
         if not self.attr_type in ['matrix', 'double3']:
             raise RuntimeError(f'{self.attr_type} do not support index operation')
         try:
@@ -36,16 +37,14 @@ class MAttribute(object):
             raise AttributeError(f'Attribute:({mc.objectType(self.node)}){self.full_name} do not exist!')
 
     @classmethod
-    def create_by_name(cls, full_name: str):
+    def create_from_attr_name(cls, full_name: str):
         name, attr = full_name.split('.', maxsplit=1)
-        if not mc.objExists(full_name):
-            raise RuntimeError(f'{full_name} do not exist')
         return cls(name, attr)
 
     @property
     def value(self):
         v = mc.getAttr(self.full_name)
-        if isinstance(v, tuple) or isinstance(v, list):
+        if isinstance(v, (tuple, list)):
             lst_type = get_list_types(v)
             if lst_type == float:
                 res = [round(i, self.VALUE_ACCURACY) for i in v]
@@ -73,7 +72,7 @@ class MAttribute(object):
 
     @property
     def default_value(self):
-        dv = mc.addAttr(self.full_name, q=True, dv=True)
+        dv = mc.addAttr(self.full_name, q=True, defaultValue=True)
         return dv
 
     def mount(self, other, force=True, inverse=False):

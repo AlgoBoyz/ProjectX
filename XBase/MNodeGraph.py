@@ -23,7 +23,7 @@ class AttributeOperation(object):
 
             mattr = None
             if isinstance(i, str):
-                mattr = MAttribute.create_by_name(i)
+                mattr = MAttribute.create_from_attr_name(i)
             elif isinstance(i, MAttribute):
                 mattr = i
 

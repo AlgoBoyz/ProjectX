@@ -3,8 +3,10 @@ from typing import Iterator, Union
 import maya.api.OpenMaya as om
 import maya.cmds as mc
 
+from XBase.MBaseFunctions import OMUtils, linear_space
 from XBase.MNodes import MNode
 from XBase.MShape import MLocatorShape
+from XBase.MGeometry import MNurbsCurve
 from XBase.MConstant import GlobalConfig, WorldUpType, Axis, ParentType
 
 
@@ -373,6 +375,38 @@ class MJointChain(MJointSet):
         if GlobalConfig.transform_root:
             instance[0].set_parent(GlobalConfig.transform_root)
         return cls(instance.node_names)
+
+    @classmethod
+    def create_from_spline(cls, alias, spline: str, count: int, uniformed=True):
+        """
+        提供三种根据曲线生成骨骼的方法
+        根据cv位置生成 count=-1
+        根据曲线长度均匀生成 uniformed=True
+        根据曲线参数域均匀生成 uniformed=False
+        """
+        m_spline = MNurbsCurve(MTransform(spline), None)
+        generated = []
+        if count == -1:
+            for i in range(m_spline.shape.shape_fn.numCVs):
+                pos = m_spline.shape.shape_fn.cvPosition(i)
+                jnt = MJoint.create(f'{alias}_{i + 1:02d}_Jnt')
+                jnt.translate.set(list(pos))
+                generated.append(jnt)
+        else:
+            for i, percent in enumerate(linear_space(0, 1, count)):
+                if uniformed:
+                    length = percent * m_spline.shape.shape_fn.length()
+                    real_u = m_spline.shape.shape_fn.findParamFromLength(length)
+                else:
+                    min_u, max_u = m_spline.shape.shape_fn.knotDomain
+                    real_u = (percent * (max_u - min_u)) + min_u
+                pos = m_spline.shape.shape_fn.getPointAtParam(real_u)
+                jnt = MJoint.create(f'{alias}_{i + 1:02d}_Jnt')
+                jnt.translate.set(list(pos))
+                generated.append(jnt)
+        instance = cls(generated)
+        instance.parent_all()
+        return instance
 
     @property
     def plane_normal(self):

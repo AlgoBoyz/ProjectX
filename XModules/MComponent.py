@@ -1,4 +1,5 @@
 import logging
+from random import uniform
 from typing import Union
 
 import maya.cmds as mc
@@ -400,6 +401,16 @@ class CurveBaseTwistComponent(object):
         self.joint_chain = joint_chain
         self.config = config
 
+    @classmethod
+    def init_from_spline(cls, alias: str,
+                         spline: str,
+                         count: int,
+                         uniformed: bool,
+                         config=CurveBaseTwistComponentConfig()):
+        jc = mt.MJointChain.create_from_spline(alias, spline, count, uniformed=uniformed)
+        instance = cls(alias, jc, config)
+        return instance
+
     def pre_build(self):
         if self.config.pre_build_func:
             self.config.pre_build_func()
@@ -409,7 +420,8 @@ class CurveBaseTwistComponent(object):
         self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
 
     def build(self):
-        pass
+        with switch_space_root(self.cache_grp.name):
+            pass
 
 
 class SurfaceBaseTwistComponentConfig(object):
@@ -512,7 +524,6 @@ class SurfaceBaseTwistComponent(object):
             mc.skinCluster(self.surface.transform.name,
                            [self.twist_tip_jnt.name, self.joint_chain[0].name],
                            toSelectedBones=True)
-
         self._setup_surface_weight()
 
     def _setup_surface_weight(self):

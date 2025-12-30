@@ -94,6 +94,10 @@ class MShapeNode(VirtualShape):
     def skin_cluster(self):
         his = [i for i in mc.listHistory(self.name) if mc.objectType(i) == 'skinCluster']
         return his[0] if his else None
+
+    @property
+    def shape_fn(self):
+        return NotImplemented
     def get_shape_data(self):
         raise NotImplemented
 
@@ -111,15 +115,15 @@ class MNurbsCurveShape(MShapeNode):
         self._check_curve()
 
     def get_shape_data(self):
-        data = MCurveData.load_from_node(self.shape_name)
+        data = MCurveData.load_from_node(self.name)
         return data
 
     def _check_curve(self):
-        node_type = mc.nodeType(self.shape_name)
+        node_type = mc.nodeType(self.name)
         if node_type != 'nurbsCurve':
-            raise RuntimeError(f'{self.shape_name} is not a nurbsCurve!')
-        if not mc.objExists(f'{self.shape_name}.cv[*]'):
-            raise RuntimeError(f'{self.shape_name} may has not points,please check it again.')
+            raise RuntimeError(f'{self.name} is not a nurbsCurve!')
+        if not mc.objExists(f'{self.name}.cv[*]'):
+            raise RuntimeError(f'{self.name} may has not points,please check it again.')
 
     @property
     def points(self):
@@ -131,7 +135,7 @@ class MNurbsCurveShape(MShapeNode):
 
     @property
     def shape_fn(self):
-        return om.MFnNurbsCurve(OMUtils.get_dependency_node(self.shape_name))
+        return om.MFnNurbsCurve(OMUtils.get_dependency_node(self.name))
 
     def set_color(self, color):
         self.overrideEnabled.set(1)
