@@ -743,12 +743,23 @@ def dev_create_joint_from_spline():
 def dev_spline_twist():
     from XModules.MComponent import CurveBaseTwistComponent, CurveBaseTwistComponentConfig
     from XBase.MBaseFunctions import get_selected_transform
+    from XBase.MTransform import MJointChain
+    from XBase.MGeometry import MNurbsCurve
+    curve = MNurbsCurve.create_by_points('MD_Spine_01_Curve',
+                                         [[0, 0, 0],
+                                          [1, 0, 0],
+                                          [2, 0, 0],
+                                          [3, 0, 0],
+                                          [4, 0, 0]])
+    # MJointChain.create_from_spline(alias='MD_Spine_01',
+    #                                spline=curve.transform.name,
+    #                                count=-1)
     comp = CurveBaseTwistComponent.init_from_spline(alias='MD_Spine_01',
-                                                    spline=get_selected_transform(),
-                                                    count=5,
-                                                    uniformed=False)
+                                                    spline='MD_Spine_01_Curve',
+                                                    count=10,
+                                                    uniformed=True)
 
 
 if __name__ == '__main__':
     standalone()
-    dev_surface_component()
+    dev_spline_twist()

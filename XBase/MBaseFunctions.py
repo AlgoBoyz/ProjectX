@@ -26,6 +26,25 @@ def switch_space_root(space_root):
     print(f'Space root reset')
 
 
+class SelectedObject(object):
+    def __init__(self):
+        self.node = mc.ls(selection=True)
+        self.length = len(self.node)
+        if self.length == 1:
+            self.node = self.node[0]
+        elif self.length == 0:
+            self.node = None
+
+    @property
+    def shape(self):
+
+        return get_selected_shape()
+
+    @property
+    def transform(self):
+        return get_selected_transform()
+
+
 def check_exist(node_name):
     if not mc.objExists(node_name):
         raise RuntimeError(f'{node_name} do not exist')
@@ -62,7 +81,7 @@ def get_selected_transform():
 def get_selected_shape():
     sel = mc.ls(selection=True)
     if not sel:
-        raise RuntimeError(f'Select source mesh:{sel}')
+        raise RuntimeError('Nothing selected')
     if mc.objectType(sel[0]) == 'transform':
         sel = mc.listRelatives(sel, children=True)
         if not sel:
@@ -317,6 +336,18 @@ class OMUtils(object):
             cv = [[i, j] for i in range(nurbs_fn.numCVsInU) for j in range(nurbs_fn.numCVsInV)]
         comp_fn.addElements(cv)
         return comp
+
+    @staticmethod
+    def get_nurbsCurve_fn_from(node: str):
+        if not mc.nodeType(node) == 'nurbsCurve':
+            child = mc.listRelatives(node, children=True)
+            if not child:
+                raise RuntimeError(f'Wrong node :{node}')
+            node = child[0]
+            if not mc.nodeType(node) == 'nurbsCurve':
+                raise RuntimeError(f'Wrong node :{node}')
+        shape_dp = OMUtils.get_dependency_node(node)
+        return om.MFnNurbsCurve(shape_dp)
 
 
 if __name__ == '__main__':

@@ -40,7 +40,13 @@ class MNurbsCurve(object):
     def __init__(self, transform: MTransform, shape: Union[MNurbsCurveShape, None]):
         self.transform = transform
         if shape is None:
-            shape = MNurbsCurveShape(get_child(transform.name))
+            try:
+                shape_name = get_child(transform.name)
+            except RuntimeError as e:
+                raise RuntimeError(
+                    f'Failed to initialize MNurbsCurve: Transform "{transform.name}" has corresponding  no shape.\nError:{e}'
+                )
+            shape = MNurbsCurveShape(shape_name)
         self.shape = shape
 
     @classmethod
@@ -64,6 +70,7 @@ class MNurbsCurve(object):
     @classmethod
     def create_by_points(cls, name, points, degree=3):
         curve = mc.curve(name=name, p=points, degree=degree)
+        mc.rename(mc.listRelatives(curve, children=True)[0], f'{name}Shape')
         curve_mt = MTransform(curve)
         curve_shape = curve_mt.child
         m_curve_shape = MNurbsCurveShape(curve_shape.name)

@@ -6,7 +6,6 @@ import maya.cmds as mc
 from XBase.MBaseFunctions import OMUtils, linear_space
 from XBase.MNodes import MNode
 from XBase.MShape import MLocatorShape
-from XBase.MGeometry import MNurbsCurve
 from XBase.MConstant import GlobalConfig, WorldUpType, Axis, ParentType
 
 
@@ -384,23 +383,25 @@ class MJointChain(MJointSet):
         根据曲线长度均匀生成 uniformed=True
         根据曲线参数域均匀生成 uniformed=False
         """
-        m_spline = MNurbsCurve(MTransform(spline), None)
+        # if not mc.objectType(spline) == 'nurbsCurve':
+        #     raise ValueError(f'Input spline:{spline} is not nurbsCurve')
+        shape_fn = OMUtils.get_nurbsCurve_fn_from(spline)
         generated = []
         if count == -1:
-            for i in range(m_spline.shape.shape_fn.numCVs):
-                pos = m_spline.shape.shape_fn.cvPosition(i)
+            for i in range(shape_fn.numCVs):
+                pos = shape_fn.cvPosition(i)
                 jnt = MJoint.create(f'{alias}_{i + 1:02d}_Jnt')
                 jnt.translate.set(list(pos))
                 generated.append(jnt)
         else:
             for i, percent in enumerate(linear_space(0, 1, count)):
                 if uniformed:
-                    length = percent * m_spline.shape.shape_fn.length()
-                    real_u = m_spline.shape.shape_fn.findParamFromLength(length)
+                    length = percent * shape_fn.length()
+                    real_u = shape_fn.findParamFromLength(length)
                 else:
-                    min_u, max_u = m_spline.shape.shape_fn.knotDomain
+                    min_u, max_u = shape_fn.knotDomain
                     real_u = (percent * (max_u - min_u)) + min_u
-                pos = m_spline.shape.shape_fn.getPointAtParam(real_u)
+                pos = shape_fn.getPointAtParam(real_u)
                 jnt = MJoint.create(f'{alias}_{i + 1:02d}_Jnt')
                 jnt.translate.set(list(pos))
                 generated.append(jnt)

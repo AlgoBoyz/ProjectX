@@ -399,6 +399,7 @@ class CurveBaseTwistComponent(object):
     def __init__(self, alias, joint_chain, config=CurveBaseTwistComponentConfig()):
         self.alias = alias
         self.joint_chain = joint_chain
+        self.spline = None
         self.config = config
 
     @classmethod
