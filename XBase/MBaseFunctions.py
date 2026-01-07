@@ -177,19 +177,17 @@ def normalize_vector(vector):
     return [round(i, 5) for i in [x / norm for x in vector]]
 
 
-def linear_space(start, end, num):
+def linear_space(start, end, num) -> list:
     if num < 2:
-        raise RuntimeError(f'Number can not less than 2')
-    portion = (end - start) / num
+        raise RuntimeError(f'Number to generate cannot be less than 2')
+    portion = (end - start) / (num - 1)
     lst = []
     current_num = start
-    while True:
+    for _ in range(num):
         lst.append(current_num)
-        current_num += portion
-        if current_num >= end:
-            lst.append(end)
-            break
-    return lst
+        if _ < num - 1:
+            current_num += portion
+    return [round(i, 5) for i in lst]
 
 
 def increase_save():
@@ -324,11 +322,10 @@ class OMUtils(object):
             single_comp.addElement(idx)
         else:
             raise RuntimeError(f'Wrong index :{idx}')
-
         return mo
 
     @staticmethod
-    def get_nurbs_component(nurbs_name, cv=None):
+    def get_nurbsSurface_component(nurbs_name, cv=None):
         comp_fn = om.MFnDoubleIndexedComponent()
         comp = comp_fn.create(om.MFn.kSurfaceCVComponent)
         nurbs_fn = om.MFnNurbsSurface(OMUtils.get_dependency_node(nurbs_name))
@@ -336,6 +333,20 @@ class OMUtils(object):
             cv = [[i, j] for i in range(nurbs_fn.numCVsInU) for j in range(nurbs_fn.numCVsInV)]
         comp_fn.addElements(cv)
         return comp
+
+    @staticmethod
+    def get_nurbsCurve_component(nurbs_name, cv=None):
+        comp_fn = om.MFnSingleIndexedComponent()
+        comp = comp_fn.create(om.MFn.kCurveCVComponent)
+        nurbs_fn = om.MFnNurbsCurve(OMUtils.get_dependency_node(nurbs_name))
+        if cv is None:
+            cv = [i for i in range(nurbs_fn.numCVs)]
+        comp_fn.addElements(cv)
+        return comp
+
+    @staticmethod
+    def get_geo_component(geo_name, cv=None):
+        pass
 
     @staticmethod
     def get_nurbsCurve_fn_from(node: str):
@@ -348,6 +359,13 @@ class OMUtils(object):
                 raise RuntimeError(f'Wrong node :{node}')
         shape_dp = OMUtils.get_dependency_node(node)
         return om.MFnNurbsCurve(shape_dp)
+
+    @staticmethod
+    def get_geo_sc_fn(geo: str):
+        sc = [i for i in mc.listHistory(geo) if mc.objectType(i) == 'skinCluster']
+        if not sc:
+            raise RuntimeError(f'Geometry has no skin cluster')
+        return oma.MFnSkinCluster(OMUtils.get_dependency_node(sc[0]))
 
 
 if __name__ == '__main__':

@@ -3,9 +3,11 @@ import pdb
 from imp import reload
 
 import sys
+from typing import TypedDict
 
 import maya.cmds as mc
 
+from XBase.MBaseFunctions import check_exist
 from XBase.MConstant import AttrType
 from XBase.MAttribute import MAttribute
 
@@ -232,8 +234,10 @@ class remapValue(MathNode):
     _CREATE_STR = 'remapValue'
     ALIAS = 'rmv'
 
+
     def __init__(self, name):
         super().__init__(name)
+
 
 
 class normalize(MathNode):
@@ -265,6 +269,24 @@ class distanceBetween(MathNode):
         if isinstance(point, str):
             point = MAttribute.create_from_attr_name(point)
         point.mount(target_attr)
+
+
+class curveInfo(MathNode):
+    _CREATE_STR = 'curveInfo'
+    ALIAS = 'cvf'
+
+    def __init__(self, name):
+        super().__init__(name)
+
+    def set_curve(self, curve: str):
+        check_exist(curve)
+        if not mc.objectType(curve) == 'nurbsCurve':
+            raise RuntimeError(f'Not nurbs curve: {curve}')
+        mc.connectAttr(f'{curve}.worldSpace', f'{self.name}.inputCurve')
+
+    def quick_connect(self, *args, **kwargs):
+        curve = args[0]
+        self.set_curve(curve)
 
 
 class MMultiply(object):

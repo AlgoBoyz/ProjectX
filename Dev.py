@@ -722,7 +722,7 @@ def dev_print_selected_weight():
     sel = mc.ls(selection=True)[0]
     dp = OMUtils.get_dependency_node('skinCluster1')
     skin_fn = oma.MFnSkinCluster(dp)
-    cv = OMUtils.get_nurbs_component(sel)
+    cv = OMUtils.get_nurbsSurface_component(sel)
     dag = OMUtils.get_dag_path(sel)
     print(dag)
     weight = list(skin_fn.getWeights(dag, cv)[0])
@@ -742,7 +742,7 @@ def dev_create_joint_from_spline():
 
 def dev_spline_twist():
     from XModules.MComponent import CurveBaseTwistComponent, CurveBaseTwistComponentConfig
-    from XBase.MBaseFunctions import get_selected_transform
+    from XBase.MBaseFunctions import get_selected_transform, linear_space
     from XBase.MTransform import MJointChain
     from XBase.MGeometry import MNurbsCurve
     curve = MNurbsCurve.create_by_points('MD_Spine_01_Curve',
@@ -756,8 +756,9 @@ def dev_spline_twist():
     #                                count=-1)
     comp = CurveBaseTwistComponent.init_from_spline(alias='MD_Spine_01',
                                                     spline='MD_Spine_01_Curve',
-                                                    count=10,
+                                                    count=5,
                                                     uniformed=True)
+    comp.build()
 
 
 if __name__ == '__main__':

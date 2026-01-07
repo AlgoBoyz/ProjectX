@@ -330,6 +330,8 @@ class MTransformList(object):
             if i < 1:
                 continue
             node.set_parent(to_reparent[i - 1])
+        if GlobalConfig.transform_root:
+            self.nodes[0].set_parent(GlobalConfig.transform_root)
 
 
 class MJointSet(MTransformList):

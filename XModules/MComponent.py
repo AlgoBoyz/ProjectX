@@ -1,6 +1,6 @@
 import logging
 from random import uniform
-from typing import Union
+from typing import Union, Optional
 
 import maya.cmds as mc
 import maya.api.OpenMayaAnim as oma
@@ -393,13 +393,16 @@ class CurveBaseTwistComponentConfig(object):
     def __init__(self):
         self.pre_build_func = None
 
+        self.enable_stretch = True
+        self.enable_squash = True
+
 
 class CurveBaseTwistComponent(object):
 
-    def __init__(self, alias, joint_chain, config=CurveBaseTwistComponentConfig()):
+    def __init__(self, alias: str, joint_chain, config=CurveBaseTwistComponentConfig()):
         self.alias = alias
-        self.joint_chain = joint_chain
-        self.spline = None
+        self.joint_chain = mt.MJointChain(joint_chain)
+        self.spline: Optional[MNurbsCurve, None] = None
         self.config = config
 
     @classmethod
@@ -410,19 +413,136 @@ class CurveBaseTwistComponent(object):
                          config=CurveBaseTwistComponentConfig()):
         jc = mt.MJointChain.create_from_spline(alias, spline, count, uniformed=uniformed)
         instance = cls(alias, jc, config)
+        instance.spline = MNurbsCurve(mt.MTransform(spline), None)
         return instance
 
     def pre_build(self):
         if self.config.pre_build_func:
             self.config.pre_build_func()
         self.cache_grp = mt.MTransform.create(f'{self.alias}_Cache_Grp')
-        GlobalConfig.set_root(self.cache_grp.name)
-        self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp')
+        self.ctrl_value_node = mt.MTransform.create(f'{self.alias}_CtrlValue_Proxy_Grp',
+                                                    under=self.cache_grp.name,
+                                                    match=self.joint_chain[0].name)
         self.ctrl_value_node.lock_attrs('t', 'r', 's', hide=True)
 
     def build(self):
+        self.pre_build()
         with switch_space_root(self.cache_grp.name):
-            pass
+            if self.spline:
+                self.ik_handle = mc.ikHandle(startJoint=self.joint_chain[0].name,
+                                             endEffector=self.joint_chain[-1].name,
+                                             solver='ikSplineSolver',
+                                             createCurve=False,
+                                             curve=self.spline.transform.name,
+                                             name=f'{self.alias}_IKHandle'
+                                             )[0]
+            else:
+                res = mc.ikHandle(startJoint=self.joint_chain[0].name,
+                                  endEffector=self.joint_chain[-1].name,
+                                  solver='ikSplineSolver',
+                                  name=f'{self.alias}_IKHandle'
+                                  )
+
+                self.ik_handle = mt.MTransform(res[0])
+                spline = mc.rename(res[-1], f'{self.alias}_Spline')
+                self.spline = MNurbsCurve(mt.MTransform(spline), None)
+            self._create_twist()
+            if self.config.enable_stretch:
+                self._create_stretch()
+            if self.config.enable_squash:
+                self._create_squash()
+            self._setup_curve_weight()
+            self._rearrange_hierarchy()
+
+    def _create_twist(self):
+        self.start_ctrl_jnt = mt.MJoint.create(name=f'{self.alias}_Start_Jnt',
+                                               match=self.joint_chain[0])
+        self.end_ctrl_jnt = mt.MJoint.create(name=f'{self.alias}_End_Jnt',
+                                             match=self.joint_chain[-1])
+
+        mc.skinCluster(self.spline.transform.name,
+                       [self.end_ctrl_jnt,
+                        self.start_ctrl_jnt],
+                       toSelectedBones=True)
+        mc.setAttr(f'{self.ik_handle}.dTwistControlEnable', True)
+        mc.setAttr(f'{self.ik_handle}.dWorldUpType', 4)
+        self.start_ctrl_jnt.worldMatrix.mount(f'{self.ik_handle}.dWorldUpMatrix')
+        self.end_ctrl_jnt.worldMatrix.mount(f'{self.ik_handle}.dWorldUpMatrixEnd')
+
+    def _create_stretch(self):
+        from XBase.MMathNode import curveInfo, multiplyDivide
+        stretch_alias = f'{self.alias}_Stretch'
+        self.cvf_node = curveInfo.create(f'{stretch_alias}_{curveInfo.ALIAS}')
+        self.cvf_node.set_curve(self.spline.shape.name)
+        self.curve_stretch_rate_mldv_node = multiplyDivide.create(f'{stretch_alias}_{multiplyDivide.ALIAS}',
+                                                                  operation=multiplyDivide.DIVIDE)
+        self.curve_stretch_rate_mldv_node.input1X.mount(self.cvf_node.arcLength, inverse=True)
+        self.curve_stretch_rate_mldv_node.input2X.mount(self.cvf_node.arcLength.value)
+
+        for jnt in self.joint_chain:
+            self.curve_stretch_rate_mldv_node.outputX.mount(jnt.translateX)
+
+    def _create_squash(self):
+        from XBase.MMathNode import curveInfo, multDoubleLinear, multiplyDivide, remapValue, addDoubleLinear
+        squash_alias = f'{self.alias}_Squash'
+        if not self.config.enable_stretch:
+            self.cvf_node = curveInfo.create(f'{squash_alias}_{curveInfo.ALIAS}')
+            self.squash_mldv_node = multiplyDivide.create(f'{squash_alias}_{multiplyDivide.ALIAS}',
+                                                          operation=multiplyDivide.DIVIDE)
+            self.curve_stretch_rate_mldv_node.input1X.mount(self.cvf_node.arcLength)
+            self.curve_stretch_rate_mldv_node.input2X.mount(self.cvf_node.arcLength.value)
+
+        squash_factor_mldv_node = multiplyDivide.create(f'{squash_alias}_{multiplyDivide.ALIAS}',
+                                                        operation=multiplyDivide.DIVIDE)
+        squash_factor_mldv_node.input1X.mount(1)
+        squash_factor_mldv_node.input2X.mount(self.curve_stretch_rate_mldv_node.outputX, inverse=True)
+
+        is_even = True if self.joint_chain.len % 2 == 0 else False
+        factors = []
+        mid = int(self.joint_chain.len / 2 if is_even else (self.joint_chain.len + 1) / 2)
+        factors.extend(linear_space(0, 1, mid))
+        factors.extend(linear_space(1, 0, mid))
+        if not is_even:
+            factors.pop(mid)
+
+        self.cache_grp.add_attr(attr_name='scaleFactor',
+                                at='float',
+                                dv=1,
+                                minValue=1
+                                )
+
+        for i, jnt in enumerate(self.joint_chain):
+            factor_mdl = multDoubleLinear.create(f'{squash_alias}_{i + 1:02d}_{multDoubleLinear.ALIAS}')
+            factor_mdl.input1.mount(factors[i])
+            factor_mdl.input2.mount(squash_factor_mldv_node.outputX, inverse=True)
+
+            factor_adl = addDoubleLinear.create(name=f'{squash_alias}_{i + 1:02d}_{addDoubleLinear.ALIAS}')
+            factor_adl.input1.mount(factor_mdl.output, inverse=True)
+            factor_adl.input2.mount(self.cache_grp.scaleFactor,inverse=True)
+
+            factor_adl.output.mount(jnt.scaleY)
+            factor_adl.output.mount(jnt.scaleZ)
+
+    def _setup_curve_weight(self):
+        curve_component = OMUtils.get_nurbsCurve_component(self.spline.shape.name)
+        head_jnt_weight = linear_space(0, 1, OMUtils.get_nurbsCurve_fn_from(self.spline.shape.name).numCVs)
+        weight_array = []
+        for i in head_jnt_weight:
+            weight_array.append(i)
+            weight_array.append(1 - i)
+        weight_array = om.MDoubleArray(weight_array)
+        sc_fn = OMUtils.get_geo_sc_fn(self.spline.transform.name)
+        sc_fn.setWeights(self.spline.shape.dag_path,
+                         curve_component,
+                         om.MIntArray([0, 1]),
+                         weight_array)
+
+    def _rearrange_hierarchy(self):
+        if self.joint_chain[0].parent is None:
+            self.joint_chain[0].set_parent(GlobalConfig.transform_root)
+        if self.spline.transform.parent is None:
+            self.spline.transform.set_parent(GlobalConfig.transform_root)
+        mc.parent(self.ik_handle, GlobalConfig.transform_root)
 
 
 class SurfaceBaseTwistComponentConfig(object):
@@ -532,7 +652,7 @@ class SurfaceBaseTwistComponent(object):
                   0.333, 0.667, 0.333, 0.667, 0.333, 0.667, 0.333, 0.667,
                   0.667, 0.333, 0.667, 0.333, 0.667, 0.333, 0.667, 0.333,
                   1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0]
-        cv = OMUtils.get_nurbs_component(self.surface.shape.name)
+        cv = OMUtils.get_nurbsSurface_component(self.surface.shape.name)
         skin_fn = oma.MFnSkinCluster(OMUtils.get_dependency_node(self.surface.shape.skin_cluster))
 
         skin_fn.setWeights(self.surface.shape.dag_path,

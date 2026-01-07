@@ -1,9 +1,10 @@
-from typing import Iterator,Optional
+from typing import Iterator, Optional
 
 import maya.cmds as mc
 from XBase.MNodes import MNode
 from XBase.MAttribute import MAttribute
 from XBase.MConstant import AttrType
+
 
 class AttributeOperation(object):
 
@@ -40,16 +41,16 @@ class AttributeOperation(object):
                 raise RuntimeError(f'Unrecognized attribute:{i}({mattr.attr_type})')
         return attr_type
 
-    def multiply(self,attr1,attr2):
+    def multiply(self, attr1, attr2):
         pass
 
-    def subtract(self,attr1,attr2):
+    def subtract(self, attr1, attr2):
         pass
 
-    def divide(self,attr1,att2):
+    def divide(self, attr1, att2):
         pass
 
-    def add(self,attr1,attr2):
+    def add(self, attr1, attr2):
         pass
 
     def distance_to(self):
@@ -57,6 +58,7 @@ class AttributeOperation(object):
 
     def as_condition(self):
         pass
+
 
 class MNodeGraph(object):
     pass
@@ -89,7 +91,7 @@ class MFormula(object):
     def get_node_from_name(self):
         pass
 
-    def insert(self, idx,in_attr,out_attr):
+    def insert(self, idx, in_attr, out_attr):
         pass
 
 
@@ -97,6 +99,7 @@ class MGraphCommand(object):
 
     def __init__(self):
         pass
+
 
 class TokenType(object):
     Float = 'Float'
@@ -118,9 +121,10 @@ class TokenType(object):
     Sine = 'Sine'
     Cosine = 'Cosine'
 
+
 class Token(object):
 
-    def __init__(self,token_type,token):
+    def __init__(self, token_type, token):
         if not token_type in TokenType.__dict__.keys():
             raise RuntimeError(f'Not supported token type:{token_type}')
         self.token_type = token_type
@@ -131,12 +135,14 @@ class Token(object):
 
     def __repr__(self):
         return f'Token(type:{self.token_type},value:{self.token})'
+
+
 class Lexer(object):
 
-    def __init__(self,text):
+    def __init__(self, text):
         self.text = text
         self.pos = 0
-        self.current_char:str = self.text[self.pos] if self.text else None
+        self.current_char: str = self.text[self.pos] if self.text else None
 
     def next(self):
         self.pos += 1
@@ -148,16 +154,17 @@ class Lexer(object):
     def get_integer(self):
         integer_token = ''
         while self.current_char.isdigit():
-            integer_token+=self.current_char
+            integer_token += self.current_char
             self.next()
         return integer_token
 
     def get_float(self):
         float_token = ''
         while self.current_char.isdigit() or self.current_char == '.':
-            float_token+=self.current_char
+            float_token += self.current_char
             self.next()
         return float_token
+
     def get_tokens(self):
         tokens = []
         while self.current_char is not None:
@@ -166,24 +173,67 @@ class Lexer(object):
                 continue
 
             if self.current_char == '(':
-                tokens.append(Token(TokenType.LParent,'('))
+                tokens.append(Token(TokenType.LParent, '('))
                 self.next()
                 continue
             elif self.current_char == ')':
-                tokens.append(Token(TokenType.RParent,')'))
+                tokens.append(Token(TokenType.RParent, ')'))
                 self.next()
                 continue
             elif self.current_char == '+':
-                tokens.append(Token(TokenType.Plus,'+'))
+                tokens.append(Token(TokenType.Plus, '+'))
             elif self.current_char == '-':
-                tokens.append(Token(TokenType.Minus,'-'))
+                tokens.append(Token(TokenType.Minus, '-'))
             elif self.current_char == '*':
-                tokens.append(Token(TokenType.Multiply,'*'))
+                tokens.append(Token(TokenType.Multiply, '*'))
             elif self.current_char == '/':
-                tokens.append(Token(TokenType.Divide,'/'))
+                tokens.append(Token(TokenType.Divide, '/'))
 
             elif self.current_char == '>>':
-                tokens.append(Token(TokenType.Divide,'/'))
+                tokens.append(Token(TokenType.Divide, '/'))
 
             else:
                 pass
+
+
+class NodeOutPorts(object):
+    # todo:用于描述节点输出端多个或单个属性的类,将是每个MNode的基础属性，支持getitem操作
+    pass
+
+
+class NodeInPorts(object):
+    # todo:用于描述节点输入端多个或单个属性的类,将是每个MNode的基础属性，支持getitem操作
+    pass
+
+
+from XBase.MMathNode import addDoubleLinear
+
+
+class Operator(object):
+
+    def __init__(self):
+        self.current_node = None
+        self.branch = []
+
+    def point_to(self, other):
+        return self
+
+    def add(self, alias, in1, in2):
+        add_node = addDoubleLinear.create(f'{alias}_{addDoubleLinear.ALIAS}')
+        add_node.quick_connect(in1, in2)
+        self.current_node = add_node
+        self.branch.append([in1, in2, add_node])
+        return self
+
+    def forward(self, other):
+        pass
+
+    def backward(self, step: int):
+        raise self
+
+    def select_port(self, attr_name):
+        return self
+
+
+op = Operator()
+op.add('LF_Arm_01', 'a.tx', 'b.ty').select_port('a.tx')

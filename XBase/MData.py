@@ -91,6 +91,7 @@ class MWeightData(object):
         self.weight_array = data[1]
         self.weight_mapper = data[2]
         self.node_attrs_values = data[3]
+        self.current_version = 0
 
 
 class MBlendShapeData(object):
