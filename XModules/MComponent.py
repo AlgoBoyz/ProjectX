@@ -483,7 +483,7 @@ class CurveBaseTwistComponent(object):
             self.curve_stretch_rate_mldv_node.outputX.mount(jnt.translateX)
 
     def _create_squash(self):
-        from XBase.MMathNode import curveInfo, multDoubleLinear, multiplyDivide, remapValue, addDoubleLinear
+        from XBase.MMathNode import curveInfo, multDoubleLinear, multiplyDivide, clamp
         squash_alias = f'{self.alias}_Squash'
         if not self.config.enable_stretch:
             self.cvf_node = curveInfo.create(f'{squash_alias}_{curveInfo.ALIAS}')
@@ -516,12 +516,13 @@ class CurveBaseTwistComponent(object):
             factor_mdl.input1.mount(factors[i])
             factor_mdl.input2.mount(squash_factor_mldv_node.outputX, inverse=True)
 
-            factor_adl = addDoubleLinear.create(name=f'{squash_alias}_{i + 1:02d}_{addDoubleLinear.ALIAS}')
-            factor_adl.input1.mount(factor_mdl.output, inverse=True)
-            factor_adl.input2.mount(self.cache_grp.scaleFactor,inverse=True)
+            factor_clm = clamp.create(f'{squash_alias}_{i + 1:02d}_{clamp.ALIAS}')
+            factor_clm.inputR.mount(factor_mdl.output,inverse=True)
+            factor_clm.maxR.mount(1.5)
+            factor_clm.minR.mount(0.3)
 
-            factor_adl.output.mount(jnt.scaleY)
-            factor_adl.output.mount(jnt.scaleZ)
+            factor_clm.outputR.mount(jnt.scaleY)
+            factor_clm.outputR.mount(jnt.scaleZ)
 
     def _setup_curve_weight(self):
         curve_component = OMUtils.get_nurbsCurve_component(self.spline.shape.name)

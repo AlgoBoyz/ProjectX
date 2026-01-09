@@ -175,7 +175,7 @@ class JsonFile(File):
         super().__init__(file_path)
         self.data = {}
 
-    def load(self)->dict:
+    def load(self):
         self.check_exist()
         with open(self.path, 'r', encoding='utf-8') as f:
             file_str = f.read()
@@ -190,23 +190,7 @@ class JsonFile(File):
             f.write(json_data)
 
 
-class Lazyproperty:
-    def __init__(self, func):
-        self.func = func
 
-    def __get__(self, instance, cls):
-        if instance is None:
-            return self
-        else:
-            value = self.func(instance)
-            setattr(instance, self.func.__name__, value)
-            return value
-
-
-class Data(object):
-
-    def __init__(self, data):
-        self.data = data
 
 
 if __name__ == "__main__":

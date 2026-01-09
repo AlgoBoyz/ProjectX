@@ -3,7 +3,7 @@ from typing import Iterator, Union
 import maya.api.OpenMaya as om
 import maya.cmds as mc
 
-from XBase.MBaseFunctions import OMUtils, linear_space
+from XBase.MBaseFunctions import OMUtils, linear_space, VectorUtils
 from XBase.MNodes import MNode
 from XBase.MShape import MLocatorShape
 from XBase.MConstant import GlobalConfig, WorldUpType, Axis, ParentType
@@ -418,6 +418,10 @@ class MJointChain(MJointSet):
         vec2 = self[2].world_pos - self[1].world_pos
         normal = cross_product(vec1, vec2)
         return normal
+
+    @property
+    def forward_axis(self):
+        return VectorUtils.vec_to_axis(self[1].translate.value)
 
     @classmethod
     def duplicate(cls, other):

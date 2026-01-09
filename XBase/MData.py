@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
@@ -108,7 +109,7 @@ class GeometryDataDepot(object):
         'max_version_count': 10
     }
 
-    def __init__(self):
+    def __init__(self, geo_type):
         pass
 
     @staticmethod
@@ -161,12 +162,10 @@ class DataDepot(object):
     def get_weight_data_from_node(cls, node_name: str):
         return NotImplemented
 
-    @classmethod
-    def get_geo_data_from_disk(cls, file_name: str):
+    def get_geo_data_from_disk(self, file_name: str):
         return NotImplemented
 
-    @classmethod
-    def save_geo_data_to_disk(cls, node_name):
+    def save_geo_data_to_disk(self, node_name):
         return NotImplemented
 
 
@@ -182,6 +181,13 @@ class NurbsCurveDataDepot(DataDepot):
 
     def __init__(self, *args, **kwargs):
         super(NurbsCurveDataDepot, self).__init__(*args, **kwargs)
+
+    def get_geo_data_from_disk(self, file_name: str)->dict:
+        file_path = os.path.join(self.work_dir, file_name+'.json')
+
+        data = JsonFile(file_path).load()
+
+        return data
 
 
 class NurbsSurfaceDataDepot(DataDepot):

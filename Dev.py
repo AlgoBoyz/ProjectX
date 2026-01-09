@@ -9,6 +9,7 @@ from setuptools.command.alias import alias
 
 from LoggingSetup import setup_global_logger
 from XBase.MBaseFunctions import get_selected_transform
+from XBase.MConstant import Axis
 from XModules.MComponent import SurfaceBaseTwistComponentConfig
 
 setup_global_logger()
@@ -759,6 +760,40 @@ def dev_spline_twist():
                                                     count=5,
                                                     uniformed=True)
     comp.build()
+
+
+class RigModuleTest(object):
+
+    @staticmethod
+    def dev_rig_module_test_process1():
+        import XModules.MRigModules as xrm
+        from XBase.MTransform import MJointChain
+        from XTools.XControllerTool import MNurbsCurveController
+        MNurbsCurveController.create(name='test', prototype_name=MNurbsCurveController.Prototype.Circle)
+        chain1 = ['LF_Arm_01_Shoulder_Jnt', 'LF_Arm_01_Elbow_Jnt', 'LF_Arm_01_Wrist_Jnt']
+        chain2 = ['MD_Spine_01_01_Jnt', 'MD_Spine_01_02_Jnt', 'MD_Spine_01_03_Jnt', 'MD_Spine_01_04_Jnt',
+                  'MD_Spine_01_05_Jnt']
+        jc = MJointChain(chain2)
+        print(jc.forward_axis)
+        # 创建蓝图
+
+        # 根据蓝图生成绑定
+
+
+class RigComponentTest(object):
+    pass
+
+
+class FuncTest(object):
+    @staticmethod
+    def dev_data():
+        from XData.MNurbsCurveData import CurveDataCollection
+        from XBase.MGeometry import MNurbsCurve
+        # data = CurveDataCollection.from_maya('curve1')
+        # data.save_to_disk('DoubledSquare')
+        curve = MNurbsCurve.rebuild_from_disk('test', 'DoubledSquare')
+        curve.shape[0].set_color([0, 0, 1])
+        curve.shape[1].set_color([1, 0, 0])
 
 
 if __name__ == '__main__':

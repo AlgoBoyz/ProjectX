@@ -57,7 +57,7 @@ class ParentType(object):
     point_constraint = 'point_constraint'
     hierarchy = 'hierarchy'
     parent_constraint = 'parent_constraint'
-
+    offset_parent_matrix = 'offset_parent_matrix'
 
 class Axis(enum.Enum):
     X = (1, 0, 0)

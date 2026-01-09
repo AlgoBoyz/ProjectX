@@ -1,10 +1,13 @@
 from __future__ import annotations
 from contextlib import contextmanager
 import math
+from typing import Union
 
 import maya.cmds as mc
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaAnim as oma
+
+from XBase.MConstant import Axis
 
 
 @contextmanager
@@ -43,6 +46,31 @@ class SelectedObject(object):
     @property
     def transform(self):
         return get_selected_transform()
+
+
+class VectorUtils(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def vec_to_axis(vec: Union[list, tuple, om.MVector]):
+        if not len(vec) == 3:
+            raise RuntimeError(f'Vector:{vec} length is invalid!')
+        if isinstance(vec, om.MVector):
+            vec = list(vec)
+        zero = [i for i, value in enumerate(vec) if value != 0]
+        print(zero)
+        if len(zero) != 1:
+            raise RuntimeError(f'{vec} can not convert to axis,more than 1 value not equal to zero')
+
+        if zero[0] == 0:
+            return Axis.X
+        elif zero[0] == 1:
+            return Axis.Y
+        elif zero[0] == 2:
+            return Axis.Z
+        else:
+            raise RuntimeError(f'Failed to convert vector:{vec} to axis,unknow error')
 
 
 def check_exist(node_name):

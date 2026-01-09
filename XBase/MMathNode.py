@@ -156,6 +156,9 @@ class condition(MathNode):
     def __init__(self, name):
         super().__init__(name)
 
+class clamp(MathNode):
+    _CREATE_STR = 'clamp'
+    ALIAS = 'clm'
 
 class decomposeMatrix(MathNode):
     _CREATE_STR = 'decomposeMatrix'

@@ -98,6 +98,7 @@ class MShapeNode(VirtualShape):
     @property
     def shape_fn(self):
         return NotImplemented
+
     def get_shape_data(self):
         raise NotImplemented
 
@@ -106,6 +107,16 @@ class MLocatorShape(MShapeNode):
 
     def __init__(self, shape_name):
         super().__init__(shape_name)
+
+
+class MMeshShape(MNode):
+
+    def __init__(self, shape):
+        super().__init__(shape)
+
+    @property
+    def vert_num(self):
+        return NotImplemented
 
 
 class MNurbsCurveShape(MShapeNode):
@@ -147,9 +158,9 @@ class MNurbsCurveShape(MShapeNode):
             scale_factor = [scale_factor, scale_factor, scale_factor]
         with undo_stack():
             for vert_idx in range(self.shape_fn.numCVs):
-                vert_coord = mc.xform(f'{self.shape_name}.cv[{vert_idx}]', q=True, translation=True, objectSpace=True)
+                vert_coord = mc.xform(f'{self.name}.cv[{vert_idx}]', q=True, translation=True, objectSpace=True)
                 coord = [i * j for i, j in zip(vert_coord, scale_factor)]
-                mc.xform(f'{self.shape_name}.cv[{vert_idx}]', translation=coord, objectSpace=True)
+                mc.xform(f'{self.name}.cv[{vert_idx}]', translation=coord, objectSpace=True)
 
     def set_rotate(self, axis, degree):
         rotation = [degree, 0, 0]
@@ -162,8 +173,8 @@ class MNurbsCurveShape(MShapeNode):
 
         with undo_stack():
             for vert_idx in range(self.shape_fn.numCVs):
-                vert_coord = mc.xform(f'{self.shape_name}.cv[{vert_idx}]', q=True, translation=True, objectSpace=True)
-                mc.xform(f'{self.shape_name}.cv[{vert_idx}]', rotation=rotation, objectSpace=True)
+                vert_coord = mc.xform(f'{self.name}.cv[{vert_idx}]', q=True, translation=True, objectSpace=True)
+                mc.xform(f'{self.name}.cv[{vert_idx}]', rotation=rotation, objectSpace=True)
 
 
 class MNurbsSurfaceShape(MShapeNode):

@@ -1,4 +1,5 @@
 from ast import literal_eval
+from typing import TypedDict, Literal
 
 import maya.cmds as mc
 
@@ -103,3 +104,49 @@ class MBlueprintArm(object):
 
     def mirror(self):
         pass
+
+
+class MBlueprint(object):
+    JOINT_ALIAS = []
+
+    def __init__(self, *args, **kwargs):
+        self.alias = args[0]
+
+    def init_from_file(self):
+        pass
+
+    def update_file(self):
+        pass
+
+    def update_from_scene(self):
+        pass
+
+
+class BluePrintData(TypedDict):
+    name: str
+    joint_names: list[str]
+    joint_matrix: list
+    parent_dict: dict
+
+    ctrl_names: list[str]
+    ctrl_prototypes: list[str]
+    ctrl_scales: list[float] # todo:每个控制器生成时，应自带scale属性，摆放时，若需调整大小，需使用scale进行调整
+
+
+class MBlueprintDepot(object):
+
+    def __init__(self, alias):
+        pass
+
+    def get_blueprint(self):
+        pass
+
+    def collect_blueprint_data(self):
+        pass
+
+
+class MTriLimbBlueprint(MBlueprint):
+    DEFAULT_DATA_FILE = ''
+
+    def __init__(self, *args, **kwargs):
+        super(MTriLimbBlueprint, self).__init__(*args, **kwargs)
